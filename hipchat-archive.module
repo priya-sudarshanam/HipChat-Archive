@@ -1,0 +1,94 @@
+<?php  
+
+/* 
+* the main menu for Hip Chat archive
+* hook_menu
+*/
+function hipchat-archive_menu() {
+  $items = array();
+
+  $items['hipchat-archive'] = array(
+        'title' => 'Hip chat Archive',
+        'description' => 'displays archives of Hip chat',
+ 	    'page callback' => '_hipchat_data',
+	    'access callback' => TRUE,
+    	);
+
+  $items['hipchat-archive/archive'] = array(
+    'title' => 'Archives',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+	'weight' => -10
+  );
+  
+ return $items;
+ 
+ }
+ 
+ /**
+* _hip_chat_history
+* parameter = $date
+* if no parameter is given, the default would be today
+*/
+  function _hipchat_data($date=Null){
+    //variable declaration
+	$room_id = 575239;
+	$output ='';
+	$time_zone = 'America/New_York';
+	$format = 'json';
+	
+	//check date 
+    if ($date == Null){
+	    $date = '2014-05-30';
+		//date('Y-m-d');
+	}
+	
+	//get history from api.hipchat.com for the parameters
+	try {
+    	$chatData = file_get_contents('https://api.hipchat.com/v1/rooms/history?room_id='.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.'&auth_token=f9f12e58a0df9ed77e14094a5eacb1');
+	}
+	catch(Exception $e)	{
+	           drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
+	           array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+	    }
+		
+	//format the data 
+  	$formattedData = format_ChatData($chatData);
+	
+	//return the formatted data
+	return $formattedData;
+	}
+
+/**
+* format_ChatData
+* parameter = $data
+* formats the data and returns the data in a table format
+*/
+function format_ChatData($data){
+    //variable declaration
+	$rows = array();
+	$yesterdayLink = '';
+	$yesterdayDate = date('Y-m-d', strtotime('- 1 day'));
+	$yesterdayLink = l(t($yesterdayDate), 'hipchat-archive/archive/'.$yesterdayDate );
+	
+    //get data from the 
+	$output = drupal_json_decode($data);
+	
+	//create the header for the table
+	$header = array('From','Message','Date');
+	$result = $output['messages'];
+	//put data into rows
+	foreach($result as $data) {
+	  $rows[] = array(
+	     $data['from']['name'],
+		 $data['message'],
+		 $data['date'],
+	   );
+	}
+	//add data to the table
+	$output = $yesterdayLink;
+	$output .=  theme('table', array('header' => $header, 'rows' => $rows));
+    		
+   //return formatted output
+   return $output;
+ 
+  }
