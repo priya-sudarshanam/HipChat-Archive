@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function hipchat_history_menu(){
+  $items = array();
+  $items['history/%'] = array(
+    'title' => 'history',
+    'description' => 'This is a simple module to load the hipchat chatting history',
+    'page callback' => 'load_history', // call the page
+    'page arguments' => array(1),
+	'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'), //The argument below is recommended for all users to have access to a page.
+  );
+		
+  return $items;
+}
+
+function load_history($date){
+  $output = array();
+  
+  $url = "https://api.hipchat.com/v1/rooms/history?room_id=575239&date=".$date."&timezone=America/New_York&format=json&auth_token=f9f12e58a0df9ed77e14094a5eacb1";
+
+  $result = drupal_http_request($url);
+  //drupal_json_output($result->data);
+  $res_array = array();
+  $rows = array();
+  
+  //var_dump(drupal_json_decode($result->data));
+  $res_array = drupal_json_decode($result->data);
+  
+  foreach($res_array['messages'] as $message){
+    //print $message['date'].' ';
+    //print $message['from']['name'].': ';
+    //print $message['message'];
+    //print '<br/>';
+    $rows[] = array($message['from']['name'], $message['message'], $message['date']);
+  };
+  
+  $headers = array('User', 'Message', 'Time');
+  
+  $pre_date = date('Y-m-d', strtotime($date .' -1 day'));
+  $next_date = date('Y-m-d', strtotime($date .' +1 day'));
+  
+  $today = date('Y-m-d');
+  $date_cmp = date_create_from_format('Y-m-d', $date);
+  $today_dd = date_create_from_format('Y-m-d', $today);
+  
+  $output['dateLink_pre'] = array(
+    '#type' => 'markup', 
+    '#markup'=> '<div id="pre_date" style="float:left">
+                 <h3><a href="?q=history/'.$pre_date.'">'.$pre_date .'</a></h3>
+				 </div>'
+  );
+  
+  $output['dateLink_cur'] = array(
+    '#type' => 'markup', 
+    '#markup'=> '<div id="cur_date" style="float:left; margin-left:160px">
+                 <h3>'.$date .'</h3>
+				 </div>'
+  );
+  
+  if ($date_cmp < $today_dd) {
+    $output['dateLink_nxt'] = array(
+      '#type' => 'markup', 
+      '#markup'=> '<div id="nxt_date" style="float:right">
+                   <h3><a href="?q=history/'.$next_date.'">'.$next_date.'</a><h3>
+				   </div>'
+    );
+  }
+  
+  $output['messageTable'] = array(
+    '#theme' => 'table',
+    '#header' => $headers,
+    '#rows' => $rows,
+  );
+
+  //$output['messageTable'] =  theme('table', array('header' => $headers, 'rows' => $rows));
+  
+  return $output;
+}
+
+
+
+
+
+
+
+
+
+
+
