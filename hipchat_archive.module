@@ -7,12 +7,12 @@
 function hipchat_archive_menu() {
   $items = array();
 
-  $items['hipchat-archive/%/%'] = array(
+  $items['hipchat-archive/%'] = array(
     'title' => 'Hip chat Archive',
     'description' => 'displays archives of Hip chat',
     'page callback' => '_hipchat_archive_get_data',
     'access callback' => TRUE,
-    'page arguments' => array(1,2),
+    'page arguments' => array(1),
     'title' => 'Archives',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
@@ -27,7 +27,7 @@ function hipchat_archive_menu() {
  * The date of the format(yyyy-mm-dd) is sent to the apichat
  * service and chat history retrieved for that date
  */
-function _hipchat_archive_get_data($date = Null, $room_id = 575239){
+function _hipchat_archive_get_data($date = NULL){
   //variable declaration
   $link = 'https://api.hipchat.com/v1/rooms/history?room_id='; 
   $output = '';
@@ -36,6 +36,7 @@ function _hipchat_archive_get_data($date = Null, $room_id = 575239){
   $format = 'json';
   $currDate = date('Y-m-d');
   $formattedData = '';
+  $room_id = 575239;
 
   //check date 
   //if the date clicked is either null or today's date
@@ -84,8 +85,8 @@ function _hipchat_archive_get_data($date = Null, $room_id = 575239){
 function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
   //variable declaration
   $rows = array();
-  $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate.'/');
-  $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate.'/');
+  $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate);
+  $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate);
 
   //get data from the 
   $output = drupal_json_decode($data);
@@ -94,18 +95,30 @@ function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
   $header = array('From','Message','Date');
   $result = $output['messages'];
   //put data into rows
-  foreach($result as $data) {
+  foreach($result as $key => $data) {
+    $user = $data['from']['name'];
+    if (isset($result[$key - 1])) {
+      $pre_user = $result[$key - 1]['from']['name'];
+    } else {
+      $pre_user = '';
+    }
+    
+    if ($user == $pre_user) {
+      $user = '';
+    }
+    
     $rows[] = array(
-          $data['from']['name'],
+          $user,
           $data['message'],
           $data['date'],
-    );
+    ); 
   }
 
   //add space between links
   $spaces = str_repeat('&nbsp;', 75);
   //format output with links on the top of the table
   $output = $prevLink.$spaces.$todayDate.$spaces.$nextLink;
+  //$output .=  theme('table', array('header' => array('here', 'here', 'here'), 'rows' => array(array($prevLink, $todayDate, $nextLink))));
   $output .=  theme('table', array('header' => $header, 'rows' => $rows));
 
   //return formatted output
