@@ -79,9 +79,9 @@ function hipchat-archive_menu() {
 function format_ChatData($prevDate,$todayDate,$data,$nextDate){
     //variable declaration
 	$rows = array();
-	$prevLink = l(t($prevDate), 'hipchat/archive/'.$prevDate);
-	$nextLink = l(t($nextDate), 'hipchat/archive/'.$nextDate);
-	$todayLink = l(t($todayDate), 'hipchat/archive/'.$todayDate);
+	$prevLink = l(t($prevDate), 'hipchat-archive/archive/'.$prevDate);
+	$nextLink = l(t($nextDate), 'hipchat-archive/archive/'.$nextDate);
+	$todayLink = l(t($todayDate), 'hipchat-archive/archive/'.$todayDate);
     //get data from the 
 	$output = drupal_json_decode($data);
 	
