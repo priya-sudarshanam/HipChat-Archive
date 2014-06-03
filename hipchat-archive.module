@@ -30,20 +30,26 @@ function hipchat-archive_menu() {
 * if no parameter is given, the default would be today
 */
   function _hipchat_data($date=Null){
-    //variable declaration
-	$room_id = 575239;
+    $room_id = 575239;
 	$link = 'https://api.hipchat.com/v1/rooms/history?room_id=';
 	$output ='';
 	$authToken = '&auth_token=f9f12e58a0df9ed77e14094a5eacb1';
 	$time_zone = 'America/New_York';
 	$format = 'json';
 	$currDate = date('Y-m-d');
+	$formattedData ='';
 	
 	//check date 
 	//if the date clicked is either null or today's date
 	//make the current date as today with next day as null
 	//else the date clicked can only be less than the current date
-    if ($date == Null || $date == $currDate ){
+	if ($date > $currDate){
+	    drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+	    $date = $currDate;
+		$prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+		$nextDate ='';
+	}
+	elseif ($date == Null || $date == $currDate){
 	   // $currDate = '2014-05-30';
 		$date = $currDate;
 		$prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
@@ -54,24 +60,24 @@ function hipchat-archive_menu() {
 		$prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
 		$nextDate = date('Y-m-d', strtotime($date .' +1 day'));
 	}
-		
-	//get history from api.hipchat.com for the parameters
 	try {
-    	$chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+	   //get history from api.hipchat.com for the parameters
+	   	$chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
 	   }
 	catch(Exception $e)	{
 	           drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
 	           array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-	    }
-		
+	}
+	
 	//format the data 
   	$formattedData = format_ChatData($prevDate,$date,$chatData,$nextDate);
 	
 	//return the formatted data
 	return $formattedData;
-	}
-
-/**
+ 
+  }
+  
+  /**
 * format_ChatData
 * parameter = $data
 * formats the data and returns the data in a table format
@@ -79,9 +85,9 @@ function hipchat-archive_menu() {
 function format_ChatData($prevDate,$todayDate,$data,$nextDate){
     //variable declaration
 	$rows = array();
-	$prevLink = l(t($prevDate), 'hipchat-archive/archive/'.$prevDate);
-	$nextLink = l(t($nextDate), 'hipchat-archive/archive/'.$nextDate);
-	$todayLink = l(t($todayDate), 'hipchat-archive/archive/'.$todayDate);
+	$prevLink = l(t($prevDate), 'hipchat/archive/'.$prevDate);
+	$nextLink = l(t($nextDate), 'hipchat/archive/'.$nextDate);
+//	$todayLink = l(t($todayDate), 'hipchat/archive/'.$todayDate);
     //get data from the 
 	$output = drupal_json_decode($data);
 	
@@ -96,10 +102,11 @@ function format_ChatData($prevDate,$todayDate,$data,$nextDate){
 		 $data['date'],
 	   );
 	}
+	
 	//add space between links
 	$spaces = str_repeat('&nbsp;', 75);
 	//format output with links on the top of the table
-	$output = $prevLink.$spaces.$todayLink.$spaces.$nextLink;
+	$output = $prevLink.$spaces.$todayDate.$spaces.$nextLink;
 	$output .=  theme('table', array('header' => $header, 'rows' => $rows));
     		
    //return formatted output
