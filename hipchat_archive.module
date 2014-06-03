@@ -12,7 +12,7 @@ function hipchat_archive_menu() {
     'description' => 'displays archives of Hip chat',
     'page callback' => '_hipchat_archive_get_data',
     'access callback' => TRUE,
-    'page arguments' => array(1,2)
+    'page arguments' => array(1,2),
     'title' => 'Archives',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
@@ -27,47 +27,35 @@ function hipchat_archive_menu() {
  * The date of the format(yyyy-mm-dd) is sent to the apichat
  * service and chat history retrieved for that date
  */
-function _hipchat_archive_get_data($date=Null, $url_room_id=Null){
+function _hipchat_archive_get_data($date = Null, $room_id = 575239){
   //variable declaration
-  $room_id = 575239;
   $link = 'https://api.hipchat.com/v1/rooms/history?room_id='; 
-  $output ='';
+  $output = '';
   $authToken = '&auth_token=f9f12e58a0df9ed77e14094a5eacb1';
   $time_zone = 'America/New_York';
   $format = 'json';
   $currDate = date('Y-m-d');
-  $formattedData ='';
+  $formattedData = '';
 
-  //check room_id
-  //if null use the default number else
-  if ($url_room_id = Null){
-    $room_id = 575239;
-  }
-  else {
-    $room_id = $url_room_id;   
-  }
- 
   //check date 
   //if the date clicked is either null or today's date
   //make the current date as today with next day as null
   //else the date clicked can only be less than the current date
-  if ($date > $currDate){
-    drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-    $date = $currDate;
-    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
-    $nextDate ='';
-  }
-  else if ($date == Null || $date == $currDate){
+  if ($date == Null || $date >= $currDate){
     // $currDate = '2014-05-30';
     $date = $currDate;
-    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
     $nextDate ='';
+    
+    if ($date > $currDate) {
+      drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+    }
   }
   else{
-    $date = $date;
-    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
     $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
   }
+  
+  $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+  
   try {
     //get history from api.hipchat.com for the parameters
     $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
@@ -93,7 +81,6 @@ function _hipchat_archive_get_data($date=Null, $url_room_id=Null){
  * page is for that date and hence not a link
  * $data is the chat history for the date selected
  */
-
 function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
   //variable declaration
   $rows = array();
