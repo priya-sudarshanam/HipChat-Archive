@@ -7,7 +7,7 @@
 function hipchat_archive_menu() {
   $items = array();
 
-  $items['hipchat-archive/%'] = array(
+  $items['hipchat-archive/%/%'] = array(
     'title' => 'Hip chat Archive',
     'description' => 'displays archives of Hip chat',
     'page callback' => '_hipchat_archive_get_data',
@@ -19,15 +19,27 @@ function hipchat_archive_menu() {
 
   return $items;
 }
+
+/**
+ * _hipchat_date_check
+ * parameter = $date 
+ * return = boolean
+ * if the date is in the correct format
+ * true is returned else false
+ */
+ function _hipchat_date_check($date){
+   $exp = explode('-', $date);
+   return (checkdate($exp[1],$exp[2],$exp[0]));
+ }
  
-/*
+/**
  * _hipchat_archive_get_data
  * parameter = $date 
  * if no parameter is given, the default would be today
  * The date of the format(yyyy-mm-dd) is sent to the apichat
  * service and chat history retrieved for that date
  */
-function _hipchat_archive_get_data($date = NULL){
+function _hipchat_archive_get_data($date = NULL,$room_id=575239){
   //variable declaration
   $link = 'https://api.hipchat.com/v1/rooms/history?room_id='; 
   $output = '';
@@ -36,42 +48,47 @@ function _hipchat_archive_get_data($date = NULL){
   $format = 'json';
   $currDate = date('Y-m-d');
   $formattedData = '';
-  $room_id = 575239;
+ // $room_id = 575239;
 
   //check date 
   //if the date clicked is either null or today's date
   //make the current date as today with next day as null
   //else the date clicked can only be less than the current date
-  if ($date == Null || $date >= $currDate){
-    // $currDate = '2014-05-30';
-    $date = $currDate;
-    $nextDate ='';
+  if (_hipchat_date_check($date)){
+    if ($date == Null || $date >= $currDate){
+      // $currDate = '2014-05-30';
+      $date = $currDate;
+      $nextDate ='';
     
-    if ($date > $currDate) {
-      drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-    }
-  }
-  else{
-    $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-  }
+      if ($date > $currDate) {
+         drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+       } 
+     }
+     else{
+       $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
+     }
   
-  $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
   
-  try {
-    //get history from api.hipchat.com for the parameters
-    $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-  }
-  catch(Exception $e){
-    drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
-    array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-  }
+    try {
+      //get history from api.hipchat.com for the parameters
+      $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+     }
+    catch(Exception $e){
+       drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
+       array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+     } 
   
   //format the data 
-  $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
+    $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
 
   //return the formatted data
-  return $formattedData;
-}
+   return $formattedData;
+  } else {
+    drupal_set_message(t('Invalid date format'),'error');   
+  
+  }
+}  
   
 /*
  * format_ChatData
@@ -90,7 +107,7 @@ function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
 
   //get data from the 
   $output = drupal_json_decode($data);
-  
+  $build =array();
   //create the header for the table
   $header = array('From','Message','Date');
   $result = $output['messages'];
@@ -115,12 +132,21 @@ function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
   }
 
   //add space between links
+  $build['links'] = array(
+   '#markup' => '<div id="predate" style="float:left">'.$prevLink.'</div>
+                    <div id="todaydate" style="float:center">'
+					   .$todayDate.'</div><div id="todaydate" style="float:right">'.$nextLink.'</div>');
+  
+  )
   $spaces = str_repeat('&nbsp;', 75);
   //format output with links on the top of the table
-  $output = $prevLink.$spaces.$todayDate.$spaces.$nextLink;
+  //$output = $prevLink.$spaces.$todayDate.$spaces.$nextLink;
   //$output .=  theme('table', array('header' => array('here', 'here', 'here'), 'rows' => array(array($prevLink, $todayDate, $nextLink))));
-  $output .=  theme('table', array('header' => $header, 'rows' => $rows));
+  $build['data'] =  array(
+     '#theme' => 'table',
+	 '#header' => $header, 
+	 '#rows' => $rows);
 
   //return formatted output
-  return $output;
+  return $build;
   }
