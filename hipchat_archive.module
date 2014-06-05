@@ -99,7 +99,7 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
 function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
   //variable declaration
   $rows = array();
-  $build ='';
+  $build =array();
   $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate);
   $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate);
 
@@ -130,11 +130,17 @@ function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
     ); 
   }
 
-  //add space between links
-  $spaces = str_repeat('&nbsp;', 75);
-  //format output with links on the top of the table
-  $build = $prevLink.$spaces.$todayDate.$spaces.$nextLink;
-  $build .=  theme('table', array('header' => $header, 'rows' => $rows));
+  //add dates as links in left, center and right positions
+  $build['links'] = array(
+   '#markup' => '<p style="text-align:left;">'.$prevLink.'
+                    <span style="float:center;margin-left: 230px;">'
+					   .$todayDate.'<span style="float:right;">'.$nextLink.'</p>'); 
+  
+  //add the header and rows as data to the table
+  $build['data'] =  array(
+     '#theme' => 'table',
+	 '#header' => $header, 
+	 '#rows' => $rows);
   
   //return formatted output
   return $build;
