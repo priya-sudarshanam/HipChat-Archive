@@ -23,12 +23,43 @@ function hipchat_archive_menu() {
  * _hipchat_date_check
  * parameter = $date 
  * return = boolean
- * if the date is in the correct format
- * true is returned else false
+ * if the date is in the correct format and the month, day and year
+ * are ints, then return true
+ * Else return the de
  */
- function _hipchat_archive_date_check($date){
+  function _hipchat_date_check($date){
    $exp = explode('-', $date);
-   return (checkdate($exp[1],$exp[2],$exp[0]));
+   $defaultDate = date('Y-m-d');  
+   $bool =  false;
+   if (strpos('-', $date) !== false){
+      $exp = explode('-', $date);
+      $month = $exp[1];
+      $day = $exp[2];
+      $year = $exp[0];
+      if ((intval($month) === 0) || (intval($day) === 0) || (intval($year) === 0)){
+         $bool = checkdate($exp[1],$exp[2],$exp[0]);
+      }
+      else {
+        $bool = true;  
+      }
+   }
+   else {
+      $bool = true;
+ }
+  return $bool;
+ }
+ 
+ /**
+ * _hipchat_room_id_check
+ * parameter = $url_room_id
+ * checks if the room_id is a valid int
+ */
+ function _hipchat_room_id_check($url_room_id){
+  $bool = false;
+  if (intval($url_room_id) === 0){
+     $bool = true;     
+ }
+   return $bool;
  }
  
 /**
@@ -48,16 +79,29 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
   $currDate = date('Y-m-d');
   $formattedData = '';
  
+  //check room_id 
+  //if null or is not int
+  //make room_id default
+  if ($url_room_id == Null || _hipchat_room_id_check($url_room_id)){
+      $room_id = 575239;
+      if (_hipchat_room_id_check($url_room_id)){
+         drupal_set_message(t('Room id needs to be of type integer'), 'error');
+        }
+    } else {
+      $room_id = $url_room_id;
+    }
+
   //check date 
   //if the date clicked is either null or today's date
   //make the current date as today with next day as null
   //else the date clicked can only be less than the current date
-  if (_hipchat_date_check($date)){
-    if ($date == Null || $date >= $currDate){
+   if (_hipchat_date_check($date) || $date == Null || $date >= $currDate){
       // $currDate = '2014-05-30';
       $date = $currDate;
       $nextDate ='';
-    
+      if (_hipchat_date_check($date)){
+            drupal_set_message(t('Date must be a valid date'), 'error');
+      }
       if ($date > $currDate) {
          drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
        } 
@@ -68,9 +112,9 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
   
     $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
   
+     //get history from api.hipchat.com for the parameters
     try {
-      //get history from api.hipchat.com for the parameters
-      $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+       $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
      }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
@@ -81,10 +125,7 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
     $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
 
   //return the formatted data
-   return $formattedData;
-  } else {
-    drupal_set_message(t('Invalid date format'),'error');   
-  }
+   return $formattedData;    
 }  
   
 /**
