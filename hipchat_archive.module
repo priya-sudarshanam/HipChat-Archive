@@ -75,8 +75,7 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
   $formattedData = '';
  
   //check room_id 
-  //if null or is not int
-  //make room_id default
+  //if null or is not int, make room_id default
   if ($url_room_id == Null || _hipchat_room_id_check($url_room_id)){
       $room_id = 575239;
       if (_hipchat_room_id_check($url_room_id)){
@@ -87,43 +86,42 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
     }
 
   //check date 
-  //if the date clicked is either null or today's date
-  //make the current date as today with next day as null
-  //else the date clicked can only be less than the current date
   //check if the date is a valid date else return an error
   if (!_hipchat_date_check($date)){
      drupal_set_message(t('Invalid date. Pls enter a valid date'), 'error');
   } else {
-   if ($date == Null || $date >= $currDate){
-      // $currDate = '2014-05-30';
-      $date = $currDate;
-      $nextDate ='';
-      
-      if ($date > $currDate) {
-         drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-       } 
-     }
-     else{
-       $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-     }
+      //if the date clicked is either null or today's date
+      //make the current date as today with next day as null
+      //else the date clicked can only be less than the current date
+      if ($date == Null || $date >= $currDate){
+         $date = $currDate;
+         $nextDate ='';
+         
+         if ($date > $currDate) {
+           drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+          } 
+        }
+      else{
+          $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
+         }
   
-    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+     $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
   
      //get history from api.hipchat.com for the parameters
-    try {
-       $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-     }
-    catch(Exception $e){
+     try {
+        $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+      }
+     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-     } 
+      } 
   
-  //format the data 
-    $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
+     //format the data 
+     $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
 
-  //return the formatted data
-   return $formattedData; 
-   }   
+     //return the formatted data
+     return $formattedData; 
+    }   
 }  
   
 /**
@@ -171,9 +169,15 @@ function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
 
   //add dates as links in left, center and right positions
   $build['links'] = array(
-   '#markup' => '<p style="text-align:left;">'.$prevLink.'
-                    <span style="float:center;margin-left: 230px;">'
-                .$todayDate.'<span style="float:right;">'.$nextLink.'</p>'); 
+   '#markup' => '<p id="prevlink">'.$prevLink.
+                '<span id="todaylink">' .$todayDate.
+                '<span id="nextlink">'.$nextLink.'</p>',
+    '#attached' => array (
+            'css' => array (
+                drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
+                )
+             )
+         );
   
   //add the header and rows as data to the table
   $build['data'] =  array(

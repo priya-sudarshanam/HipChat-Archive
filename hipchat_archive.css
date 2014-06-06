@@ -1,0 +1,10 @@
+#prevlink {
+    text-align:left;
+}
+#todaylink {
+    float:center;
+    margin-left: 230px;
+}
+#nextlink {
+    float:right;
+}
