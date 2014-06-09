@@ -1,39 +1,12 @@
 <?php
 /**
  * @file
- * Install, update and uninstall functions for the hipchat module.
+ * Install, update and uninstall functions for the hipchat_archive module.
  */
 
  
-function hipchat_update_7001(){
- db_create_table('hipchat', hipchat_schema()); 
-}
- 
-/**
- * Implements hook_install(). 
- */
-function hipchat_install() {  
-  // Add a default entry.
-}
-
-/**
- * Implements hook_uninstall().
- */
-function hipchat_uninstall() {
-  // nothing.
-}
-
-/**
- * Implements hook_schema().
- *
- * Defines the database tables used by this module.
- * Table 'hipchat' contains the following fields:
- * ChatID (auto-incremented), date (chat date) and 
- * data which would be json format
- */
-function hipchat_schema() {
-
-  $schema['hipchat'] = array(
+function hipchat_archive_update_7001(){
+ $schema['hipchat_archive'] = array(
     'description' => 'Stores chat log for a particular date.',
     'fields' => array(
       'cid'  => array(
@@ -60,6 +33,21 @@ function hipchat_schema() {
       'date'    => array('date'),
      ),
   );
-
-  return $schema;
+  
+ db_create_table('hipchat_archive', $schema['hipchat_archive']); 
 }
+ 
+/**
+ * Implements hook_install(). 
+ */
+function hipchat__archive_install() {  
+  // Add a default entry.
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function hipchat_archive_uninstall() {
+  // nothing.
+}
+
