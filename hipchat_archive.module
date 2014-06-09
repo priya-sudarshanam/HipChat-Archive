@@ -116,14 +116,43 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
       } 
   
-     //format the data 
-     $formattedData = _hipchat_archive_format_data($prevDate,$date,$chatData,$nextDate);
+     //send the data to be extracted from and saving to the db
+     $jsonDecodedData = drupal_json_decode($chatData);
+     $formattedData = _hipchat_parse_save_data($jsonDecodedData);
 
      //return the formatted data
      return $formattedData; 
     }   
 }  
+ 
+/**
+ * _hipchat_parse_save_data
+ * parameter = $data
+ * extracts the date and message and saves it
+ * to the db
+ * return True in case of success and false otherwise
+ */ 
+ function _hipchat_parse_save_data($data){
+   //extract the 'messages' part
+   $chatMessages = $data['messages'];
+   $success = false;
+   
+   //add the date and message to the array
+   foreach($chatMessages as $result){
+     $saveChatData[] = array(
+     'cdate' => $result['date'],
+	 'cdata' => $result['message'],
+	 );
+  }
   
+  $success = hipchat_save_data($saveChatData);
+  
+  //return true or false
+  return $success;
+  } 
+  
+  
+ 
 /**
  * _hipchat_archive_format_data
  * parameter = $prevDate, $todayDate, $data, $nextDate
