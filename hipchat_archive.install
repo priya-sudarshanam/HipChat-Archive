@@ -16,21 +16,20 @@ function hipchat_archive_update_7001(){
       ),
       'cdate' => array(
         'type' => 'date',
+        'mysql_type' => 'date',
         'not null' => TRUE,
-        'default' => 0,
-        'description' => "Chat Date",
+        'description' => 'Chat Date',
       ),
       'cdata' => array(
         'type' => 'varchar',
         'length' => 255,
-        'not null' => False,
         'default' => '',
-        'description' => 'Chat data for a particlar date.',
+        'description' => 'Chat data for a particular date.',
       ),
     ),
     'primary key' => array('cid'),
     'indexes' => array(
-      'date'    => array('date'),
+      'cdate'    => array('date'),
      ),
   );
   
