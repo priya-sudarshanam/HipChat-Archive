@@ -108,14 +108,14 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
      //if not get data from webservice and save it to db
     try {
         $dataDb = hipchat_select_data_id($date);
-        //if the data is available in the db
-        //the format it and send it to the user
         if ($dataDb) {
-          $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id);}
-        else {
-          //get data from ws if not available in the db and save it
+          $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id);} 
+        else { 
           $dataWebService = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-          $formattedData = saveWSData($date,$nextDate,$dataWebService,$room_id);
+          $jsonDecodedData = drupal_json_decode($dataWebService);
+          $saveChatData[] = array('cdate' => $date,'cdata' => $jsonDecodedData);
+          hipchat_save_data($saveChatData);
+          $formattedData = format_ChatData($date,$nextDate,$saveChatData[0],$room_id);
          }
      }
     catch(Exception $e){
@@ -123,36 +123,11 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
      } 
  
-      //return the formatted data	 
+      //return the formatted data 
       return $formattedData;
      }
-	}
+    }
 }
-
-/**
- * saveWSData
- * parameters = $data,$nextDate,$dataWS,$room_id
- * the data is jsondecoded and sent to the db
- * and retrieved and sent to the user
- */ 
-function saveWSData($date,$nextDate,$dataWS,$room_id){
-    //json decode
-    $jsonDecodedData = drupal_json_decode($dataWS);
-    //add data to the array
-    $saveChatData[] = array(
-     'cdate' => $date,
-     'cdata' => $jsonDecodedData,   
-   );
-    //save the data to the db
-    $success = hipchat_save_data($saveChatData);
-	
-    //if saved, return to the user formatted
-    if ($success){
-      return _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id) ;
-     }
-   
-    return false;
- }
 
 /**
  * _hipchat_archive_format_data
@@ -175,7 +150,15 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
     //create the header for the table
     $header = array('From','Message','Date');
     $getData = $data['cdata'];
-    $result = drupal_json_decode($getData);
+    
+    //if already an array then retrieve the data for 
+    //'messages' key else jsondecode the string
+    if (is_array($getData)){
+       $result = $getData['messages'];
+     }
+    else {
+      $result = drupal_json_decode($getData);
+    }
 
     //put data into rows
     foreach($result as $key => $data) {
