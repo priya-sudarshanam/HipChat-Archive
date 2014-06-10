@@ -27,19 +27,21 @@
  * Insert new chat data values into the table
  */
 function hipchat_data($chatValues){
-  $dataInsert = NULL;
   $table = 'hipchat';
   try {
         $dataInsert = db_insert($table)
 	                ->fields(array(
-					  'cdate' => $chatValues['@cdate'],
-					  'cdata' => $chatValues['@cdata'],
-					  ))
+					  'cdate' => $chatValues[0]['cdate'],
+					  'cdata' => drupal_json_encode($chatValues[0]['cdata']['messages']),
+					   ))
 					->execute();
+		if ($dataInsert){
+		  return true;
+		}
      }
   catch(Exception $e) {
         drupal_set_message(t('Adding the new chat data failed. Message = %message, query=%query', 
 	    array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
   }
-  return $dataInsert; 
+  return false; 
 }

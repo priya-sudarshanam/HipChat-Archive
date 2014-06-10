@@ -90,40 +90,39 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
   if (!_hipchat_date_check($date)){
      drupal_set_message(t('Invalid date. Pls enter a valid date'), 'error');
   } else {
-      //if the date clicked is either null or today's date
-      //make the current date as today with next day as null
-      //else the date clicked can only be less than the current date
+   if (_hipchat_date_check($date)){
       if ($date == Null || $date >= $currDate){
-         $date = $currDate;
-         $nextDate ='';
-         
-         if ($date > $currDate) {
-           drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-          } 
-        }
-      else{
-          $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-         }
-  
-     $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
-  
+      // $currDate = '2014-05-30';
+      $date = $currDate;
+      $nextDate ='';
+      
+	  if ($date > $currDate) {
+         drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+       } 
+     }
+     else{
+       $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
+     }
+   
      //get history from api.hipchat.com for the parameters
-     try {
-        $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-      }
-     catch(Exception $e){
+    try {
+       $chatData = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);	   
+     }
+    catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-      } 
-  
-     //send the data to be extracted from and saving to the db
-     $jsonDecodedData = drupal_json_decode($chatData);
-     $formattedData = _hipchat_parse_save_data($jsonDecodedData);
-
-     //return the formatted data
-     return $formattedData; 
-    }   
-}  
+     } 
+	 
+	$jsonDecodedData = drupal_json_decode($chatData);
+    $savedData = _hipchat_parse_save_data($jsonDecodedData, $date);
+    if ($savedData){
+	   $formattedData = format_ChatData($date,$nextDate,$room_id);	
+	}
+	 //return the formatted data
+	 return $formattedData;
+     }
+	}
+}
  
 /**
  * _hipchat_parse_save_data
@@ -133,22 +132,15 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
  * return True in case of success and false otherwise
  */ 
  function _hipchat_parse_save_data($data){
-   //extract the 'messages' part
-   $chatMessages = $data['messages'];
    $success = false;
+   $saveChatData[] = array(
+     'cdate' => $date,
+	 'cdata' => $data,   
+   );
    
-   //add the date and message to the array
-   foreach($chatMessages as $result){
-     $saveChatData[] = array(
-     'cdate' => $result['date'],
-	 'cdata' => $result['message'],
-	 );
-  }
+   $success = hipchat_save_data($saveChatData);
   
-  $success = hipchat_save_data($saveChatData);
-  
-  //return true or false
-  return $success;
+  return $success; 
   } 
   
   
@@ -162,58 +154,63 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
  * page is for that date and hence not a link
  * $data is the chat history for the date selected
  */
-function _hipchat_archive_format_data($prevDate,$todayDate,$data,$nextDate){
+function _hipchat_archive_format_data($date,$nextDate,$room_id){
   //variable declaration
   $rows = array();
-  $build =array();
-  $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate);
-  $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate);
+	$prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+	$prevLink = l(t($prevDate), 'hipchat/'.$prevDate.'/'.$room_id);
+	$nextLink = l(t($nextDate), 'hipchat/'.$nextDate.'/'.$room_id);
+	$todayLink = l(t($date), 'hipchat/'.$date.'/'.$room_id);
+	$build = array();
 
-  //get data from the 
-  $output = drupal_json_decode($data);
-   
-  //create the header for the table
-  $header = array('From','Message','Date');
-  $result = $output['messages'];
-  
-  //put data into rows
-  foreach($result as $key => $data) {
-    $user = $data['from']['name'];
-    if (isset($result[$key - 1])) {
-      $pre_user = $result[$key - 1]['from']['name'];
-    } else {
-      $pre_user = '';
-    }
+	//create the header for the table
+	$header = array('From','Message','Date');
+	$data = hipchat_select_data_id($date);
+  	$getData = $data['cdata'];
+	$result = drupal_json_decode($getData);
+
+    //put data into rows
+    foreach($result as $key => $data) {
+	   $user = $data['from']['name'];
+	   if (isset($result[$key - 1])) {
+          $pre_user = $result[$key - 1]['from']['name'];
+         } else {
+         $pre_user = '';
+        }
     
     if ($user == $pre_user) {
       $user = '';
     }
     
     $rows[] = array(
-      $user,
-      $data['message'],
-      $data['date'],
+          $user,
+          $data['message'],
+          $data['date'],
     ); 
   }
 
-  //add dates as links in left, center and right positions
+  $spaces = str_repeat('&nbsp;', 75);
   $build['links'] = array(
-   '#markup' => '<p id="prevlink">'.$prevLink.
-                '<span id="todaylink">' .$todayDate.
-                '<span id="nextlink">'.$nextLink.'</p>',
+   '#markup' => '<p id="prevlink">'.$prevLink.'
+                 <span id="todaylink">' .$date.
+				 '<span id="nextlink">'.$nextLink.'</p>',
     '#attached' => array (
-            'css' => array (
-                drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
-                )
-             )
-         );
-  
-  //add the header and rows as data to the table
+	     'css' => array (
+		    drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
+		   				)
+				)
+			 );				 
+ 
   $build['data'] =  array(
      '#theme' => 'table',
-     '#header' => $header, 
-     '#rows' => $rows);
-  
+	 '#header' => $header, 
+	 '#rows' => $rows);
+
   //return formatted output
   return $build;
+ // theme('table', array('header' => $header, 'rows' => $rows));
+    		
+   //return formatted output*/
+  // return $output;
+ 
   }

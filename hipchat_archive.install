@@ -21,15 +21,14 @@ function hipchat_archive_update_7001(){
         'description' => 'Chat Date',
       ),
       'cdata' => array(
-        'type' => 'varchar',
-        'length' => 255,
+        'type' => 'longtext',
         'default' => '',
         'description' => 'Chat data for a particular date.',
       ),
     ),
     'primary key' => array('cid'),
     'indexes' => array(
-      'cdate'    => array('date'),
+      'cdate'    => array('cdate'),
      ),
   );
   
