@@ -35,17 +35,3 @@ function hipchat_archive_update_7001(){
  db_create_table('hipchat_archive', $schema['hipchat_archive']); 
 }
  
-/**
- * Implements hook_install(). 
- */
-function hipchat__archive_install() {  
-  // Add a default entry.
-}
-
-/**
- * Implements hook_uninstall().
- */
-function hipchat_archive_uninstall() {
-  // nothing.
-}
-
