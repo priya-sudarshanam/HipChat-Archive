@@ -7,10 +7,10 @@
 /**
  * Retrieve data from the table('hipchat') for a given date
  */
- function hipchat_select_data_id($cdate){
-    $table = 'hipchat';
+function hipchat_select_data_id($cdate){
+    $table = 'hipchat_archive';
     try {
-         $selected = db_select('hipchat','hc')
+         $selected = db_select('hipchat_archive','hc')
                    ->fields('hc')
                    ->condition('cdate',$cdate)
                    ->execute()
@@ -19,15 +19,15 @@
     catch(Exception $e)	{
              drupal_set_message(t('Issue in retrieving the chat data for date= '.$cdate.'. Message = %message, query=%query', 
              array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-     }
-     return $selected;
+    }
+    return $selected;
 }
 
 /**
  * Insert new chat data values into the table
  */
-function hipchat_data($chatValues){
-  $table = 'hipchat';
+function hipchat_save_data($chatValues){
+  $table = 'hipchat_archive';
   try {
         $dataInsert = db_insert($table)
                      ->fields(array(

@@ -12,11 +12,17 @@ function hipchat_archive_menu() {
     'description' => 'displays archives of Hip chat',
     'page callback' => '_hipchat_archive_get_data',
     'access callback' => TRUE,
+	'type' => MENU_NORMAL_ITEM,
     'page arguments' => array(1,2),
     'title' => 'Archives',
   );
 
   return $items;
+}
+
+
+function _hipchat_load_includes(){
+    module_load_include('inc', 'hipchat_archive', 'hipchat_archive.dbfunctions');
 }
 
 /**
@@ -26,12 +32,12 @@ function hipchat_archive_menu() {
  * if the date is in the correct format and the month, day and year
  * are ints, then return true
  */
-  function _hipchat_date_check($date){
+function _hipchat_date_check($date){
     $val = strtotime($date);
     //check the value of $val
     //if date is anything other than valid date
     //return false
-    if (!$val){
+    if ($val){
         $exp = explode('-', $date);
         $month = $exp[1];
         $day = $exp[2];
@@ -40,7 +46,7 @@ function hipchat_archive_menu() {
            return (checkdate($month,$day,$year)); 
         }
      }
- 
+    drupal_set_message($val);
     return false;
  }
  
@@ -49,13 +55,13 @@ function hipchat_archive_menu() {
  * parameter = $url_room_id
  * checks if the room_id is a valid int
  */
- function _hipchat_room_id_check($url_room_id){
-  $bool = false;
-  if (intval($url_room_id) === 0){
-     $bool = true;     
- }
-   return $bool;
- }
+function _hipchat_room_id_check($url_room_id){
+    $bool = false;
+    if (intval($url_room_id) === 0){
+        $bool = true;     
+    }
+    return $bool;
+}
  
 /**
  * _hipchat_archive_get_data
@@ -64,7 +70,10 @@ function hipchat_archive_menu() {
  * The date of the format(yyyy-mm-dd) is sent to the apichat
  * service and chat history retrieved for that date
  */
-function _hipchat_archive_get_data($date = NULL,$room_id=575239){
+function _hipchat_archive_get_data($date = NULL,$url_room_id=575239){
+  
+  _hipchat_load_includes();
+  
   //variable declaration
   $link = 'https://api.hipchat.com/v1/rooms/history?room_id='; 
   $output = '';
@@ -109,13 +118,14 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
     try {
         $dataDb = hipchat_select_data_id($date);
         if ($dataDb) {
-          $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id);} 
+          $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id);} 
         else { 
           $dataWebService = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
           $jsonDecodedData = drupal_json_decode($dataWebService);
           $saveChatData[] = array('cdate' => $date,'cdata' => $jsonDecodedData);
           hipchat_save_data($saveChatData);
-          $formattedData = format_ChatData($date,$nextDate,$saveChatData[0],$room_id);
+		  
+          $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
          }
      }
     catch(Exception $e){
@@ -139,12 +149,12 @@ function _hipchat_archive_get_data($date = NULL,$room_id=575239){
  * $data is the chat history for the date selected
  */
 function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
-  //variable declaration
+    //variable declaration
     $rows = array();
     $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
-    $prevLink = l(t($prevDate), 'hipchat/'.$prevDate.'/'.$room_id);
-    $nextLink = l(t($nextDate), 'hipchat/'.$nextDate.'/'.$room_id);
-    $todayLink = l(t($date), 'hipchat/'.$date.'/'.$room_id);
+    $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate.'/'.$room_id);
+    $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate.'/'.$room_id);
+    $todayLink = l(t($date), 'hipchat-archive/'.$date.'/'.$room_id);
     $build = array();
 
     //create the header for the table
@@ -184,17 +194,15 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
 
   //create the markup and include css
   $build['links'] = array(
-   '#markup' => '<p id="prevlink">'.$prevLink.'
+    '#markup' => '<p id="prevlink">'.$prevLink.'
                  <span id="todaylink">' .$date.
                  '<span id="nextlink">'.$nextLink.'</p>',
     '#attached' => array (
-            'css' => array (
+             'css' => array (
               drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
                      )
                )
-         );	 
- 
- 
+  ); 
  
   //create the table for data output
   $build['data'] =  array(
@@ -205,4 +213,4 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
   //return formatted output
   return $build;
  
-  }
+}

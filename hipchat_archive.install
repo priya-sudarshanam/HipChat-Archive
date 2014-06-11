@@ -4,34 +4,68 @@
  * Install, update and uninstall functions for the hipchat_archive module.
  */
 
- 
-function hipchat_archive_update_7001(){
- $schema['hipchat_archive'] = array(
+/**
+  * Implements hook_install()
+  *
+  * Create a default entry in the database
+  */
+function hipchat_archive_install() {
+  
+    // add a default entry
+	$fields = array(
+		'cid' => '1',
+		'cdate' => '2014-6-1',
+		'cdata' => 'asddd',
+	);
+	
+	db_insert('hipchat_archive')
+		->fields($fields)
+		->execute();
+  }
+
+/**
+  * Implements hook_uninstall()
+  * 
+  * 
+  */
+function hipchat_archive_uninstall() {
+    
+	// nothing.
+}
+
+function hipchat_archive_schema(){
+  $schema['hipchat_archive'] = array(
     'description' => 'Stores chat log for a particular date.',
+	
     'fields' => array(
-      'cid'  => array(
-        'type' => 'serial',
-        'not null' => TRUE,
-        'description' => 'Primary Key: Unique chat ID.',
-      ),
-      'cdate' => array(
-        'type' => 'date',
-        'mysql_type' => 'date',
-        'not null' => TRUE,
-        'description' => 'Chat Date',
-      ),
-      'cdata' => array(
-        'type' => 'longtext',
-        'default' => '',
-        'description' => 'Chat data for a particular date.',
-      ),
+        'cid'  => array(
+          'type' => 'serial',
+          'not null' => TRUE,
+          'description' => 'Primary Key: Unique chat ID.',
+        ),
+	  
+        'cdate' => array(
+          'type' => 'date',
+          'mysql_type' => 'varchar',
+		  'length' => 30,
+          'not null' => TRUE,
+		  'default' => ' ',
+          'description' => 'Chat Date',
+        ),
+	  
+        'cdata' => array(
+          'type' => 'longtext ',
+          'description' => 'Chat data for a particular date.',
+        ),
     ),
+	
     'primary key' => array('cid'),
+	
     'indexes' => array(
       'cdate'    => array('cdate'),
      ),
   );
   
- db_create_table('hipchat_archive', $schema['hipchat_archive']); 
+  return $schema;
 }
  
