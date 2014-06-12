@@ -12,7 +12,6 @@ function hipchat_archive_menu() {
     'description' => 'displays archives of Hip chat',
     'page callback' => '_hipchat_archive_get_data',
     'access callback' => TRUE,
-	'type' => MENU_NORMAL_ITEM,
     'page arguments' => array(1,2),
     'title' => 'Archives',
   );
@@ -23,6 +22,7 @@ function hipchat_archive_menu() {
 
 function _hipchat_load_includes(){
     module_load_include('inc', 'hipchat_archive', 'hipchat_archive.dbfunctions');
+    module_load_include('css', 'hipchat_archive', 'hipchat_archive');
 }
 
 /**
@@ -46,8 +46,7 @@ function _hipchat_date_check($date){
            return (checkdate($month,$day,$year)); 
         }
      }
-    drupal_set_message($val);
-    return false;
+    // return false;
  }
  
  /**
@@ -124,7 +123,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=575239){
           $jsonDecodedData = drupal_json_decode($dataWebService);
           $saveChatData[] = array('cdate' => $date,'cdata' => $jsonDecodedData);
           hipchat_save_data($saveChatData);
-		  
+  
           $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
          }
      }
