@@ -5,9 +5,12 @@
 */
 
 /**
- * Retrieve data from the table('hipchat') for a given date
+ * _hipchat_archive_select_data_fordate
+ * parameter : $cdate
+ * retrieves chata data for a particular date
+ * returns chatdata for the selected date
  */
-function hipchat_select_data_id($cdate){
+function _hipchat_archive_select_data_fordate($cdate){
     $table = 'hipchat_archive';
     try {
          $selected = db_select('hipchat_archive','hc')
@@ -24,9 +27,12 @@ function hipchat_select_data_id($cdate){
 }
 
 /**
- * Insert new chat data values into the table
+ * _hipchat_archive_save_data
+ * parameter : $chatValues
+ * saves chata data for a particular date
+ * returns true if saved, false otherwise
  */
-function hipchat_save_data($chatValues){
+function _hipchat_archive_save_data($chatValues){
   $table = 'hipchat_archive';
   try {
         $dataInsert = db_insert($table)
