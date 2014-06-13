@@ -26,43 +26,6 @@ function _hipchat_load_includes(){
 }
 
 /**
- * _hipchat_date_check
- * parameter = $date 
- * return = boolean
- * if the date is in the correct format and the month, day and year
- * are ints, then return true
- */
-function _hipchat_date_check($date){
-    $val = strtotime($date);
-    //check the value of $val
-    //if date is anything other than valid date
-    //return false
-    if ($val){
-        $exp = explode('-', $date);
-        $month = $exp[1];
-        $day = $exp[2];
-        $year = $exp[0];
-        if (intval($month) || intval($day) || intval($year)){
-           return (checkdate($month,$day,$year)); 
-        }
-     }
-    // return false;
- }
- 
- /**
- * _hipchat_room_id_check
- * parameter = $url_room_id
- * checks if the room_id is a valid int
- */
-function _hipchat_room_id_check($url_room_id){
-    $bool = false;
-    if (intval($url_room_id) === 0){
-        $bool = true;     
-    }
-    return $bool;
-}
- 
-/**
  * _hipchat_archive_get_data
  * parameter = $date 
  * if no parameter is given, the default would be today
@@ -74,69 +37,125 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=575239){
   _hipchat_load_includes();
   
   //variable declaration
-  $link = 'https://api.hipchat.com/v1/rooms/history?room_id='; 
-  $output = '';
-  $authToken = '&auth_token=f9f12e58a0df9ed77e14094a5eacb1';
-  $time_zone = 'America/New_York';
-  $format = 'json';
-  $currDate = date('Y-m-d');
-  $formattedData = '';
- 
-  //check room_id 
-  //if null or is not int, make room_id default
-  if ($url_room_id == Null || _hipchat_room_id_check($url_room_id)){
-      $room_id = 575239;
-      if (_hipchat_room_id_check($url_room_id)){
-         drupal_set_message(t('Room id needs to be of type integer'), 'error');
-        }
+   $link = 'https://api.hipchat.com/v1/rooms/history?room_id=';
+   $output ='';
+   $authToken = '&auth_token='.variable_get('chat_room_token');
+   $time_zone = 'America/New_York';
+   $format = 'json';
+   $currDate = date('Y-m-d');
+   $formattedData ='';
+	
+   //check room_id if null or not an int. If not an int
+   //use default room_id else use the sent room_id
+   if ($url_room_id == Null || (intval($url_room_id) === 0)){
+      $room_id = variable_get('chat_room_id');
+      if (intval($url_room_id) === 0){
+            drupal_set_message(t('Room id must be an integer'), 'error');
+      }
     } else {
       $room_id = $url_room_id;
     }
-
-  //check date 
-  //check if the date is a valid date else return an error
-  if (!_hipchat_date_check($date)){
-     drupal_set_message(t('Invalid date. Pls enter a valid date'), 'error');
-  } else {
-   if (_hipchat_date_check($date)){
-      if ($date == Null || $date >= $currDate){
-      // $currDate = '2014-05-30';
-      $date = $currDate;
-      $nextDate ='';
-      
-      if ($date > $currDate) {
-         drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-       } 
-     }
-     else{
-       $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-     }
+    //check date 
+    //if the date clicked is either null or today's date
+    //make the current date as today with next day as null
+    //else the date clicked can only be less than the current date
+    if (strtotime($date) && ($date == Null || $date >= $currDate)){
+          if ($date > $currDate) {
+               drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+              }
+              $date = $currDate;
+              $nextDate ='';
+               
+              }
+          else{
+              $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
+             }
+			 
    
-     //check if the database has the chatdata for the selected date
-     //if not get data from webservice and save it to db
+     //get history from api.hipchat.com for the parameters
     try {
-        $dataDb = hipchat_select_data_id($date);
-        if ($dataDb) {
-          $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id);} 
-        else { 
-          $dataWebService = file_get_contents($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-          $jsonDecodedData = drupal_json_decode($dataWebService);
-          $saveChatData[] = array('cdate' => $date,'cdata' => $jsonDecodedData);
-          hipchat_save_data($saveChatData);
-  
-          $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
-         }
+         $dataDb = hipchat_select_data_id($date);
+         $saveChatData = array();
+         if ($dataDb) {
+            drupal_set_message(t('coming from db')); 
+            $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id);
+        } 
+        else 
+         { 
+          //check if data exists
+          $dataDb = _hipchat_archive_getDataFromWebService($link,$room_id,$date,$time_zone,$format,$authToken);
+          $chatData = (array)$dataDb[0]['chatdata'];
+          //retrieve the value for key 'messages'
+          //if 'error' then return error message else
+          //return data
+         if ($dataDb[0]['value'] === 'messages'){
+                 $chatDataValue = drupal_json_decode($chatData['data']);
+                 $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
+                 hipchat_save_data($saveChatData);
+                 $formattedData = format_ChatData($date,$nextDate,$saveChatData[0],$room_id);
+            }  else { 
+                drupal_set_message(($dataDb[0]['message']),'error');
+                $date = $currDate;
+                $nextDate = '';
+                $formattedData = format_ChatData($date,$nextDate,$saveChatData,$room_id);
+               }
+             return $formattedData;
+		  
      }
+   }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
      } 
- 
-      //return the formatted data 
-      return $formattedData;
-     }
-    }
+	 
+     //return the formatted data
+     return $formattedData ; 
 }
+
+
+/**
+ * _hipchat_archive_getDataFromWebService
+ * parameters = $link, 4room_id,$date, $time_zone,$format,$authToken
+ * $link = url to connect
+ * $room_id = the room for which to get data from 
+ * $date = the date for which to get data 
+ * $time_zone = require the time zone for eg America/New York
+ * $authToken = the token for authentication
+ * checks if the webservice returns data or error 
+ * error condition: the room may not have been created etc
+ * returns an array with 'value' = error or message
+ * 'message' = reason for error
+ * 'chatdata' => if everything is valid 
+ */
+function _hipchat_archive_getDataFromWebService($link,$room_id,$date,$time_zone,$format,$authToken){
+          $dataSend = array();
+          //make the http request
+          $dataWebService = drupal_http_request($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+          $arr = (array)$dataWebService;
+         //check the key if error or message
+           $arrKey = key((array)json_decode(current((array)$arr['data'])));
+          //get the message for the error
+          $arrValue = (array)json_decode(current((array)$arr['data'])); 
+          if ($arrKey === 'error'){
+              $arrVal = (array)$arrValue['error'];
+              $arrValMessage = $arrVal['message']. ' Returning data for today';
+           }
+           if ($arrKey === 'error'){
+             $dataSend[] = array(
+               'value' => $arrKey,
+               'message' => $arrValMessage,
+               'chatdata' => ''		
+              );
+            } else {
+              $dataSend[] = array(
+                 'value' => $arrKey,
+                 'chatdata' => $dataWebService, 
+              );
+            }
+         //return the combined array
+         return $dataSend; 
+}
+
 
 /**
  * _hipchat_archive_format_data
@@ -158,52 +177,53 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
 
     //create the header for the table
     $header = array('From','Message','Date');
-    $getData = $data['cdata'];
-    
-    //if already an array then retrieve the data for 
-    //'messages' key else jsondecode the string
-    if (is_array($getData)){
+    if ($data){ 
+      $getData = $data['cdata'];
+      if (is_array($getData)){
        $result = $getData['messages'];
-     }
-    else {
-      $result = drupal_json_decode($getData);
-    }
-
+        }
+      else {
+       $result = drupal_json_decode($getData);
+      }
     //put data into rows
-    foreach($result as $key => $data) {
-       //check if user is the same
-       //if same do not repeat in the following row
-       $user = $data['from']['name'];
-       if (isset($result[$key - 1])) {
-          $pre_user = $result[$key - 1]['from']['name'];
-         } else {
-         $pre_user = '';
+     if ($result){
+      foreach($result as $key => $data) {
+         $user = $data['from']['name'];
+         if (isset($result[$key - 1])) {
+           $pre_user = $result[$key - 1]['from']['name'];
+           } else {
+          $pre_user = '';
+          }
+    
+        if ($user == $pre_user) {
+        $user = '';
         }
     
-    if ($user == $pre_user) {
-      $user = '';
+       $rows[] = array(
+           $user,
+           $data['message'],
+           $data['date'],
+       ); 
+     }
     }
-    
-    $rows[] = array(
-          $user,
-          $data['message'],
-          $data['date'],
-    ); 
+  else {
+     drupal_set_message(t('No data available for the selected date.'));
   }
+  }
+  
 
-  //create the markup and include css
+  $spaces = str_repeat('&nbsp;', 75);
   $build['links'] = array(
-    '#markup' => '<p id="prevlink">'.$prevLink.'
+   '#markup' => '<p id="prevlink">'.$prevLink.'
                  <span id="todaylink">' .$date.
                  '<span id="nextlink">'.$nextLink.'</p>',
     '#attached' => array (
-             'css' => array (
-              drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
-                     )
-               )
-  ); 
+           'css' => array (
+                 drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
+                 )
+              )
+            );				 
  
-  //create the table for data output
   $build['data'] =  array(
      '#theme' => 'table',
      '#header' => $header, 
@@ -211,5 +231,4 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
 
   //return formatted output
   return $build;
- 
 }
