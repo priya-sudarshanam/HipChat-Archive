@@ -19,7 +19,11 @@ function hipchat_archive_menu() {
   return $items;
 }
 
-
+/**
+ * _hipchat_load_includes
+ * loads all the necessary files 
+ * like dbfunctions.inc and hipchat_arcive.css
+ */
 function _hipchat_load_includes(){
     module_load_include('inc', 'hipchat_archive', 'hipchat_archive.dbfunctions');
     module_load_include('css', 'hipchat_archive', 'hipchat_archive');
@@ -27,13 +31,14 @@ function _hipchat_load_includes(){
 
 /**
  * _hipchat_archive_get_data
- * parameter = $date 
- * if no parameter is given, the default would be today
- * The date of the format(yyyy-mm-dd) is sent to the apichat
- * service and chat history retrieved for that date
+ * parameter = $date , $room_id
+ * if no parameter is given, the default would be today and the room_id
+ * would be the default
+ * The date of the format(yyyy-mm-dd)and the room_id, is sent to the apichat
+ * service. Chat history retrieved for that date and that room
  */
-function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
-  
+function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){  
+  //load the included files
   _hipchat_load_includes();
   
   //variable declaration
@@ -44,7 +49,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
    $format = 'json';
    $currDate = date('Y-m-d');
    $formattedData ='';
-	
+
    //check room_id if null or not an int. If not an int
    //use default room_id else use the sent room_id
    if ($url_room_id == Null || (intval($url_room_id) === 0)){
@@ -60,24 +65,22 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
     //make the current date as today with next day as null
     //else the date clicked can only be less than the current date
     if (strtotime($date) && ($date == Null || $date >= $currDate)){
-          if ($date > $currDate) {
-               drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-              }
-              $date = $currDate;
-              $nextDate ='';
-               
-              }
-          else{
-              $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-             }
-			 
+       if ($date > $currDate) {
+           drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
+          }
+          $date = $currDate;
+          $nextDate ='';
+        }
+       else{
+          $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
+        }
    
      //get history from api.hipchat.com for the parameters
     try {
-         $dataDb = _hipchat_archive_select_data_fordate($date);
-         $saveChatData = array();
-         if ($dataDb) {
-            $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id);
+        $dataDb = _hipchat_archive_select_data_fordate($date);
+        $saveChatData = array();
+        if ($dataDb) {
+           $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id);
         } 
         else 
          { 
@@ -87,26 +90,24 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
           //retrieve the value for key 'messages'
           //if 'error' then return error message else
           //return data
-         if ($dataDb[0]['value'] === 'messages'){
-                 $chatDataValue = drupal_json_decode($chatData['data']);
-                 $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
-                 _hipchat_archive_save_data($saveChatData);
-                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
-            }  else { 
+          if ($dataDb[0]['value'] === 'messages'){
+             $chatDataValue = drupal_json_decode($chatData['data']);
+             $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
+             _hipchat_archive_save_data($saveChatData);
+             $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
+            } else { 
                 drupal_set_message(($dataDb[0]['message']),'error');
                 $date = $currDate;
                 $nextDate = '';
                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id);
                }
-             return $formattedData;
-		  
-     }
+          }
    }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
        array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
      } 
-	 
+ 
      //return the formatted data
      return $formattedData ; 
 }
@@ -114,7 +115,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
 
 /**
  * _hipchat_archive_getdatawebservice
- * parameters = $link, 4room_id,$date, $time_zone,$format,$authToken
+ * parameters = $link, $room_id,$date,$time_zone,$format,$authToken
  * $link = url to connect
  * $room_id = the room for which to get data from 
  * $date = the date for which to get data 
@@ -127,55 +128,58 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
  * 'chatdata' => if everything is valid 
  */
 function _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken){
-          $dataSend = array();
-          //make the http request
-          $dataWebService = drupal_http_request($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
-          $arr = (array)$dataWebService;
-         //check the key if error or message
-           $arrKey = key((array)json_decode(current((array)$arr['data'])));
-          //get the message for the error
-          $arrValue = (array)json_decode(current((array)$arr['data'])); 
-          if ($arrKey === 'error'){
-              $arrVal = (array)$arrValue['error'];
-              $arrValMessage = $arrVal['message']. ' Returning data for today';
-           }
-           if ($arrKey === 'error'){
-             $dataSend[] = array(
-               'value' => $arrKey,
-               'message' => $arrValMessage,
-               'chatdata' => ''		
-              );
-            } else {
-              $dataSend[] = array(
-                 'value' => $arrKey,
-                 'chatdata' => $dataWebService, 
-              );
-            }
-         //return the combined array
-         return $dataSend; 
+    $dataSend = array();
+    //make the http request
+    $dataWebService = drupal_http_request($link.$room_id.'&date='.$date.'&timezone='.$time_zone.'&format='.$format.$authToken);
+    $arr = (array)$dataWebService;
+    //check the key if error or message
+    $arrKey = key((array)json_decode(current((array)$arr['data'])));
+    //get the value for the key 'error'
+    $arrValue = (array)json_decode(current((array)$arr['data'])); 
+    //if key is 'error' then retrieve the error message
+    if ($arrKey === 'error'){
+       $arrVal = (array)$arrValue['error'];
+       $arrValMessage = $arrVal['message']. ' Returning data for today';
+     }
+    if ($arrKey === 'error'){
+        $dataSend[] = array(
+          'value' => $arrKey,
+          'message' => $arrValMessage,
+          'chatdata' => ''		
+          );
+     } else {
+         $dataSend[] = array(
+           'value' => $arrKey,
+           'chatdata' => $dataWebService, 
+         );
+    }
+    //return the combined array
+    return $dataSend; 
 }
 
 
 /**
  * _hipchat_archive_format_data
- * parameter = $date, $data, $nextDate
+ * parameter = $date,$nextDate,$data,$room_id
  * formats the data and returns the data in a table format
  * $nextDate are used for creating links
- * $todayDate is used for showing the user that the date on a 
+ * $date is used for showing the user that the date on a 
  * page is for that date and hence not a link
  * $data is the chat history for the date selected
+ * $roomid for the creating the url
  */
 function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
     //variable declaration
     $rows = array();
+    $links = array();
     $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
-    $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate.'/'.$room_id);
-    $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate.'/'.$room_id);
-    $todayLink = l(t($date), 'hipchat-archive/'.$date.'/'.$room_id);
-    $build = array();
 
     //create the header for the table
     $header = array('From','Message','Date');
+
+    //get the created links
+    $links = _hipchat_archive_build_links($prevDate, $room_id,$nextDate,$date);
+
     if ($data){ 
       $getData = $data['cdata'];
       if (is_array($getData)){
@@ -186,48 +190,81 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
       }
     //put data into rows
      if ($result){
-      foreach($result as $key => $data) {
-         $user = $data['from']['name'];
-         if (isset($result[$key - 1])) {
-           $pre_user = $result[$key - 1]['from']['name'];
-           } else {
-          $pre_user = '';
-          }
-    
-        if ($user == $pre_user) {
-        $user = '';
-        }
-    
-       $rows[] = array(
-           $user,
-           $data['message'],
-           $data['date'],
-       ); 
+      $rows = _hipchat_archive_get_rows($result);
      }
-    }
-  else {
-     drupal_set_message(t('No data available for the selected date.'));
-  }
-  }
-  
+     else {
+       drupal_set_message(t('No data available for the selected date.'));
+      }
+     }
+ 
+  //return formatted output
+  return _hipchat_archive_get_build($links,$date,$header,$rows);
+}
 
-  $spaces = str_repeat('&nbsp;', 75);
+/**
+ * _hipchat_archive_build_links
+ * parameter = $prevDate, $room_id,$nextDate,$date
+ * creates and returns the links for prev and next day
+ */
+function _hipchat_archive_build_links($prevDate, $room_id,$nextDate,$date){
+    $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate.'/'.$room_id);
+    $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate.'/'.$room_id);
+   
+    return $links[] = array (
+            'prevlink' => $prevLink,
+            'nextlink' => $nextLink,
+          );
+}
+
+/**
+ * _hipchat_archive_get_build
+ * parameter = $links,$date,$header,$rows
+ * creates and returns the table created with
+ * headers and rows
+ */
+function _hipchat_archive_get_build($links,$date,$header,$rows){
   $build['links'] = array(
-   '#markup' => '<p id="prevlink">'.$prevLink.'
+   '#markup' => '<p id="prevlink">'.$links['prevlink'].'
                  <span id="todaylink">' .$date.
-                 '<span id="nextlink">'.$nextLink.'</p>',
+                 '<span id="nextlink">'.$links['nextlink'].'</p>',
     '#attached' => array (
            'css' => array (
-                 drupal_get_path('module', 'hipchat') . '/hipchat_archive.css' ,
+                 drupal_get_path('module', 'hipchat_archive') . '/hipchat_archive.css' ,
                  )
               )
-            );				 
+            );
  
-  $build['data'] =  array(
-     '#theme' => 'table',
-     '#header' => $header, 
-     '#rows' => $rows);
+   $build['data'] =  array(
+         '#theme' => 'table',
+         '#header' => $header, 
+         '#rows' => $rows);
 
-  //return formatted output
-  return $build;
+   return $build;
+ }
+
+/**
+ * _hipchat_archive_get_rows
+ * parameter = $result
+ * creates and returns the rows with
+ * data for a particular date
+ */
+function _hipchat_archive_get_rows($result){
+   foreach($result as $key => $data) {
+     $user = $data['from']['name'];
+     if (isset($result[$key - 1])) {
+       $pre_user = $result[$key - 1]['from']['name'];
+      } else {
+        $pre_user = '';
+        }
+    
+     if ($user == $pre_user) {
+       $user = '';
+     }    
+     $rows[] = array(
+        $user,
+        $data['message'],
+        $data['date'],
+       ); 
+     }
+    return $rows;
 }
