@@ -51,3 +51,27 @@ function _hipchat_archive_save_data($chatValues){
   }
   return false; 
 }
+
+// update DB
+function _hipchat_archive_update_data($chatValues){
+  $table = 'hipchat_archive';
+  try {
+        $dataUpdate = db_update($table)
+                     ->fields(array(
+                      'cdata' => drupal_json_encode($chatValues[0]['cdata']['messages']),
+                      ))
+					 ->condition('cdate', $chatValues[0]['cdate'])
+                     ->execute();
+        if ($dataUpdate){
+             return true;
+       }
+     }
+  catch(Exception $e) {
+        drupal_set_message(t('Updating the new chat data failed. Message = %message, query=%query', 
+           array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+  }
+  return false; 
+
+
+
+}
