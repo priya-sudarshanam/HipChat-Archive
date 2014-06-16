@@ -1,0 +1,42 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the hipchat_archive module.
+ */
+
+function hipchat_archive_schema(){
+  $schema['hipchat_archive'] = array(
+    'description' => 'Stores chat log for a particular date.',
+
+    'fields' => array(
+        'cid'  => array(
+          'type' => 'serial',
+          'not null' => TRUE,
+          'description' => 'Primary Key: Unique chat ID.',
+        ),
+  
+        'cdate' => array(
+          'type' => 'date',
+          'mysql_type' => 'date',
+          'not null' => TRUE,
+          //'default' => ' ',
+          'description' => 'Chat Date',
+        ),
+  
+        'cdata' => array(
+          'type' => 'longtext',
+          'mysql_type' => 'longtext',
+          'description' => 'Chat data for a particular date.',
+        ),
+    ),
+
+    'primary key' => array('cid'),
+
+    'indexes' => array(
+      'cdate'    => array('cdate'),
+     ),
+  );
+  
+  return $schema;
+}
+ 
