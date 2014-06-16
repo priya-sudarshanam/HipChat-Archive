@@ -1,3 +1,0 @@
-name = hipchat_history
-description = This is a simple module to load the hipchat chatting history
-core = 7.x
