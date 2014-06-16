@@ -199,8 +199,12 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
           $user = '';
         }
         else {
-          $user = $user.l(t("  #"), 'hipchat-archive/'.$date.'/'.$room_id);
-        }
+          //$user = $user.l(t('  #'), 'hipchat-archive/'.$date.'/'.$room_id,$options = array('fragment' => "todaylink"));
+          
+		  $anchorName = "anchorName_".$key;
+		  $URL = 'hipchat-archive/'.$date.'/'.$room_id.'#'.$anchorName;
+		  $user = '<div id='.$anchorName.'>'.$user.'<a href='.$URL.'>  #</a></div>';
+		}
     
        $rows[] = array(
            $user,
