@@ -75,25 +75,26 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
      //get history from api.hipchat.com for the parameters
     try {
          $dataDb = _hipchat_archive_select_data_fordate($date);
+		 $dataWS = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
          $saveChatData = array();
-         if ($dataDb) {
+         if ($dataDb == $dataWS) {
             $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id);
         } 
         else 
          { 
           //check if data exists
-          $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-          $chatData = (array)$dataDb[0]['chatdata'];
+          //$dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+          $chatData = (array)$dataWS[0]['chatdata'];
           //retrieve the value for key 'messages'
           //if 'error' then return error message else
           //return data
-         if ($dataDb[0]['value'] === 'messages'){
+         if ($dataWS[0]['value'] === 'messages'){
                  $chatDataValue = drupal_json_decode($chatData['data']);
                  $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
                  _hipchat_archive_save_data($saveChatData);
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id);
             }  else { 
-                drupal_set_message(($dataDb[0]['message']),'error');
+                drupal_set_message(($dataWS[0]['message']),'error');
                 $date = $currDate;
                 $nextDate = '';
                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id);
