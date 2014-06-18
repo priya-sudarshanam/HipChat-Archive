@@ -22,7 +22,12 @@ function hipchat_archive_schema(){
           'default' => ' ',
           'description' => 'Chat Date',
         ),
-  
+        'ctime' => array(
+           'type' => 'time',
+           'mysql_type' => 'time',
+           'not null' => TRUE,
+           'description' => 'Chat Record Entry Time (Now)',
+         ),
         'cdata' => array(
           'type' => 'longtext ',
           'description' => 'Chat data for a particular date.',

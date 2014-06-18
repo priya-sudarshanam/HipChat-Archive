@@ -77,14 +77,29 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
    
      //get history from api.hipchat.com for the parameters
     try {
-        if ((($date === $currDate) && ($date < date('Y-m-d', strtotime($date .' +1 day')))) || (!hipchat_select_data_id($date))){
-             $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-             $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);			 
-         } 
-         else {
-            $dataDb = hipchat_select_data_id($date);
-           $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);
-            } 
+        if (($date === $currDate) && ($date < strtotime('tomorrow'))) {
+           $dataDb = hipchat_select_data_id($date);
+           if ($dataDb){
+             $timeDiff = _hipchat_archive_getTimeDifference($date);
+             if ($timeDiff/3600 >= 1) {
+                $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+                $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,True);
+             } else {
+                $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);
+               }
+             } else {
+               $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+               $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);
+              }
+         } else {
+             $dataDb = hipchat_select_data_id($date);
+             if ($dataDb) {
+               $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);	
+               } else {
+                  $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+                  $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);	   
+               }
+            }
        }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
@@ -93,6 +108,21 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
  
      //return the formatted data
      return $formattedData ; 
+}
+
+/**
+ * _hipchat_archive_getTimeDifference
+ * parameters = $date
+ * $date is sent to the db for retrieving time for the 
+ * selected date
+ * returns time difference between the time the data
+ * was entered and now
+ */
+function _hipchat_archive_getTimeDifference($date){
+  $origTime = hipchat_select_time_fordate($date);
+  $convertedTime = strtotime($origTime['ctime']);
+  $timeNow = time();
+  return($timeNow - $convertedTime);
 }
 
 /**
@@ -107,13 +137,17 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
  * error condition: the room may not have been created etc
  * returns formatted data
  */
-function _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate) {
+function _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,$update=NULL) {
    $chatData = (array)$dataDb[0]['chatdata'];
               //retrieve the value for key 'messages', if 'error' then return error message else return data
               if ($dataDb[0]['value'] === 'messages'){
                  $chatDataValue = drupal_json_decode($chatData['data']);
                  $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
-                 _hipchat_archive_save_data($saveChatData);
+                 if ($update){
+                     _hipchat_archive_update_data($date,$saveChatData);
+                 } else {
+                   _hipchat_archive_save_data($saveChatData);
+                   }
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id,$prevDate);
               } else {
                  drupal_set_message(($dataDb[0]['message']),'error');
