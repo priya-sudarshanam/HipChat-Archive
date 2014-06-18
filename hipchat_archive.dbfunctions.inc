@@ -12,9 +12,10 @@
  */
 function _hipchat_archive_select_data_fordate($cdate){
     $table = 'hipchat_archive';
+    $tableAlias = 'ha';
     try {
-         $cSelected = db_select('hipchat_archive','hc')
-                   ->fields('hc')
+         $cSelected = db_select($table,$tableAlias)
+                   ->fields($tableAlias)
                    ->condition('cdate',$cdate)
                    ->execute()
                    ->fetchAssoc();
@@ -34,9 +35,10 @@ function _hipchat_archive_select_data_fordate($cdate){
  */
 function _hipchat_archive_select_time_fordate($cdate){
     $table = 'hipchat_archive';
+    $tableAlias = 'ha';
     try {
-         $cSelected = db_select('hipchat_archive','hc')
-                   ->fields('hc',array('ctime'))
+         $cSelected = db_select($table,$tableAlias)
+                   ->fields($tableAlias,array('ctime'))
                    ->condition('cdate',$cdate)
                    ->execute()
                    ->fetchAssoc();
@@ -57,23 +59,23 @@ function _hipchat_archive_select_time_fordate($cdate){
  */
 function _hipchat_archive_save_data($chatValues){
   $table = 'hipchat_archive';
+  $cDate = $chatValues[0]['cdate'];
+  $cTime = date("H:i:s");
+  $cdata = drupal_json_encode($chatValues[0]['cdata']['messages']);
   try {
-        $cInsert = db_insert($table)
+        $cInserted = db_insert($table)
                      ->fields(array(
-                      'cdate' => $chatValues[0]['cdate'],
-					  'ctime' => time();
-                      'cdata' => drupal_json_encode($chatValues[0]['cdata']['messages']),
+                      'cdate' => $cDate,
+                      'ctime' =>  $cTime,
+                      'cdata' => $cdata,
                       ))
                      ->execute();
-       /* if ($dataInsert){
-             return true;
-       }*/
-     }
+      }
   catch(Exception $e) {
         drupal_set_message(t('Adding the new chat data failed. Message = %message, query=%query', 
            array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
   }
-  return $dataInsert; 
+  return $cInserted; 
 }
 
 /**
@@ -83,19 +85,21 @@ function _hipchat_archive_save_data($chatValues){
  * returns true if updated, false otherwise
  */
 function _hipchat_archive_update_data($date,$data){
+ $table = 'hipchat_archive';
+ $cTime = date("H:i:s");
+
  try {
-       $cUpdated = db_update('hipchat')
-	                ->fields(array(
-				   	    'ctime' => time(),
-					    'cdata' => $data,
-					   ))
-	  		        ->condition('cdate',$date)
-			        ->execute();  
+       $cUpdated = db_update($table)
+                     ->fields(array(
+                        'ctime' => $cTime,
+                        'cdata' => $data,
+                        ))
+                    ->condition('cdate',$date)
+                    ->execute();  
   }
   catch (Exception $e){
-    
-     drupal_set_message(t('Issue in updating the chat:'.$id.' . Message = %message, query=%query', 
-	 array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+       drupal_set_message(t('Issue in updating the chat data for date= '.$date.'. Message = %message, query=%query', 
+             array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
   }
   return $cUpdated; 
 }
