@@ -77,10 +77,10 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
    
      //get history from api.hipchat.com for the parameters
     try {
-        if (($date === $currDate) && ($date < strtotime('tomorrow'))) {
-           $dataDb = hipchat_select_data_id($date);
-           if ($dataDb){
-             $timeDiff = _hipchat_archive_getTimeDifference($date);
+	    $dataDb = hipchat_select_data_id($date);
+		$timeDiff = _hipchat_archive_getTimeDifference($date);
+        if (($date === $currDate) && ($date < strtotime('tomorrow'))) {           
+           if ($dataDb){             
              if ($timeDiff/3600 >= 1) {
                 $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
                 $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,True);
@@ -92,7 +92,6 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
                $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);
               }
          } else {
-             $dataDb = hipchat_select_data_id($date);
              if ($dataDb) {
                $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);	
                } else {
