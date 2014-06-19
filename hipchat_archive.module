@@ -66,16 +66,20 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
     //make the current date as today with next day as null
     //else the date clicked can only be less than the current date
     if (strtotime($date) && ($date == Null || $date >= $currDate)){
-       if ($date > $currDate) {
-           drupal_set_message(t('Cannot retrieve data for date beyond today'), 'error');
-          }
-          $date = $currDate;
-          $nextDate ='';
-		  $prevDate = date('Y-m-d', strtotime($currDate .' -1 day')); 
-        }
-       else{
+      if ($date > $currDate) {
+         drupal_get_messages();
+         drupal_set_message(t('No data available for this day'));
+         }
+         $date = $date;
+         $nextDate = '';
+         $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
+       } else {
           $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
-        }
+             }
+ 
+    //run cron to save the data from yesterday into the db
+    hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken);			   
+
    
      //get history from api.hipchat.com for the parameters
     try {
@@ -94,11 +98,11 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
          //the data will come from the db if the above conditions fail
          if ((($date === $currDate) && (($dataDb && ($hour >= 1)) || !$dataDb))
               || (($date !== $currDate) && !$dataDb)){
-                    $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-                    $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
+                $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+                $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
               } else {
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id,$prevDate); 
-                 }
+           }
        }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
@@ -109,6 +113,33 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
      return $formattedData ; 
 }
 
+/**
+ * hipchat_archive_cron
+ * parameters = $link,$room_id,$prevDate,$time_zone,$format,$authToken
+ * $link: to connect to the webservice
+ * $room_id: to identify the room
+ * $prevDate: retrieve data for yesterday
+ * $time_zone: is currently EST
+ * $format: set to json 
+ * $authToken: the authorization token for the room  and data
+ * saves the data for yesterday in the db 
+ */
+function hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken){
+   //get data for yesterday from webservice
+   $prevDayData = getDataFromWebService($link,$room_id,$prevDate,$time_zone,$format,$authToken);
+   //retrieve the data for 'key' chatdata and convert to an array
+   $chatData = (array)$prevDayData[0]['chatdata'];
+   $saveChatData = array();
+   $saved = '';
+   if ($prevDayData[0]['value'] === 'messages'){
+         //json decode the data
+         $prevDayDataValue = drupal_json_decode($chatData['data']);
+         //save it to the db
+         $saveChatData[] = array('cdate' => $prevDate,'cdata' => $prevDayDataValue);
+         $saved = hipchat_save_data($saveChatData); 
+     }
+ }
+ 
 /**
  * _hipchat_archive_gettimedifference
  * parameters = $date
@@ -154,11 +185,14 @@ function _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_i
             }
       $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id,$prevDate);
     } else {
-        drupal_set_message(($dataDb[0]['message']),'error');
-        $date = $currDate;
-        $nextDate = '';
-        $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
-        $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
+        drupal_get_messages();
+        drupal_set_message('No data available for this day');
+        $date = $date;
+        $nextDate = $nextDate;
+        $prevDate = date('Y-m-d', strtotime($date .' -1 day'));
+  
+
+  $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
       }
 
     return $formattedData;
@@ -242,6 +276,8 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id,$prevDate){
     //put data into rows
      if ($result){
        $rows = _hipchat_archive_get_rows($result,$date,$room_id);
+      } else {
+        drupal_set_message(t('No data available for the selected date.'));
       }
     }
  
