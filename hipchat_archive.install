@@ -19,7 +19,6 @@ function hipchat_archive_schema(){
           'type' => 'date',
           'mysql_type' => 'date',
           'not null' => TRUE,
-          'default' => ' ',
           'description' => 'Chat Date',
         ),
         'ctime' => array(

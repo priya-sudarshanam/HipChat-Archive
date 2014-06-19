@@ -7,7 +7,7 @@
 /**
  * _hipchat_archive_select_data_fordate
  * parameter : $cdate
- * retrieves chata data for a particular date
+ * retrieves chat data for a particular date
  * returns chatdata for the selected date
  */
 function _hipchat_archive_select_data_fordate($cdate){
@@ -44,7 +44,7 @@ function _hipchat_archive_select_time_fordate($cdate){
                    ->fetchAssoc();
      }
     catch(Exception $e)	{
-             drupal_set_message(t('Issue in retrieving the chat data for date= '.$cdate.'. Message = %message, query=%query', 
+             drupal_set_message(t('Issue in retrieving time for the selected date= '.$cdate.'. Message = %message, query=%query', 
              array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
     }
     return $cSelected;
@@ -72,7 +72,7 @@ function _hipchat_archive_save_data($chatValues){
                      ->execute();
       }
   catch(Exception $e) {
-        drupal_set_message(t('Adding the new chat data failed. Message = %message, query=%query', 
+        drupal_set_message(t('Adding new chat data failed. Message = %message, query=%query', 
            array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
   }
   return $cInserted; 

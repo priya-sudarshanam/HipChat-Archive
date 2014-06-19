@@ -43,12 +43,13 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
   
   //variable declaration
    $link = 'https://api.hipchat.com/v1/rooms/history?room_id=';
-   $output ='';
    $authToken = '&auth_token='.variable_get('chat_room_token');
    $time_zone = 'America/New_York';
    $format = 'json';
    $currDate = date('Y-m-d');
    $formattedData ='';
+   $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
+      
 
    //check room_id if null or not an int. If not an int
    //use default room_id else use the sent room_id
@@ -70,7 +71,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
           }
           $date = $currDate;
           $nextDate ='';
-          $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
+		  $prevDate = date('Y-m-d', strtotime($currDate .' -1 day')); 
         }
        else{
           $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
@@ -81,12 +82,12 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
          //get data from db for the selected date
          $dataDb = hipchat_select_data_id($date);
         //get time diff between now and the time the data was entered
-        //into the db from webservice
+        //in the db from webservice
          $timeDiff = _hipchat_archive_gettimedifference($date);
          //calculate the hour 
          $hour  = $timeDiff/3600 ;
 
-         //the data will come from the webservice in these following conditions:
+         //the data will come from the webservice under these following conditions:
          //a)the date is today and (either the time difference is greater than 1
          //or the data is not in the db
          //b)date is not today and data is not in db
@@ -94,7 +95,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
          if ((($date === $currDate) && (($dataDb && ($hour >= 1)) || !$dataDb))
               || (($date !== $currDate) && !$dataDb)){
                     $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-                    $formattedData = _hipchat_archive_checkWebData($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
+                    $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
               } else {
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id,$prevDate); 
                  }
@@ -114,7 +115,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
  * $date is sent to the db for retrieving time for the 
  * selected date
  * returns time difference between the time the data
- * was entered and now
+ * was entered in the db and now
  */
 function _hipchat_archive_gettimedifference($date){
   //get the time when data was entered into the db
@@ -126,8 +127,10 @@ function _hipchat_archive_gettimedifference($date){
 }
 
 /**
- * _hipchat_archive_checkWebData
- * parameters = $dataDb,$date,$nextDate,$room_id,$prevDate
+ * _hipchat_archive_checkwebdata
+ * parameters = $dataDb,$date,$nextDate,$room_id,$prevDate,$update
+ * $update, by default, is null. It receives a boolean value
+ * when update is true
  * $dataDb = the data coming from the webservice
  * $room_id = the room for which to get data from 
  * $date = the date which is the key in the hipchat_archive table
@@ -136,8 +139,8 @@ function _hipchat_archive_gettimedifference($date){
  * checks if the webservice returns data or error 
  * error condition: the room may not have been created etc
  * returns formatted data
- */
-function _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,$update=NULL) {
+ */                                       
+function _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,$update=NULL) {
    $chatData = (array)$dataDb[0]['chatdata'];
    $saveChatData = array();
    //retrieve the value for key 'messages', if 'error' then return error message else return data
