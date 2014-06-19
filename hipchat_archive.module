@@ -78,7 +78,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
              }
  
     //run cron to save the data from yesterday into the db
-    hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken);			   
+    _hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken);			   
 
    
      //get history from api.hipchat.com for the parameters
@@ -114,7 +114,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
 }
 
 /**
- * hipchat_archive_cron
+ * _hipchat_archive_cron
  * parameters = $link,$room_id,$prevDate,$time_zone,$format,$authToken
  * $link: to connect to the webservice
  * $room_id: to identify the room
@@ -124,7 +124,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
  * $authToken: the authorization token for the room  and data
  * saves the data for yesterday in the db 
  */
-function hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken){
+function _hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken){
    //get data for yesterday from webservice
    $prevDayData = getDataFromWebService($link,$room_id,$prevDate,$time_zone,$format,$authToken);
    //retrieve the data for 'key' chatdata and convert to an array
