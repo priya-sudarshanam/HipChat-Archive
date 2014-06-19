@@ -87,12 +87,12 @@ function _hipchat_archive_save_data($chatValues){
 function _hipchat_archive_update_data($date,$data){
  $table = 'hipchat_archive';
  $cTime = date("H:i:s");
- $cdata = drupal_json_encode($chatValues[0]['cdata']['messages']);
+ $cData = drupal_json_encode($data[0]['cdata']['messages']);
  try {
        $cUpdated = db_update($table)
                      ->fields(array(
                         'ctime' => $cTime,
-                        'cdata' => $cdata,
+                        'cdata' => $cData,
                         ))
                     ->condition('cdate',$date)
                     ->execute();  

@@ -70,6 +70,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
           }
           $date = $currDate;
           $nextDate ='';
+          $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
         }
        else{
           $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
@@ -77,28 +78,26 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
    
      //get history from api.hipchat.com for the parameters
     try {
-	    $dataDb = hipchat_select_data_id($date);
-		$timeDiff = _hipchat_archive_getTimeDifference($date);
-        if (($date === $currDate) && ($date < strtotime('tomorrow'))) {           
-           if ($dataDb){             
-             if ($timeDiff/3600 >= 1) {
-                $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-                $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,True);
-             } else {
-                $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);
-               }
-             } else {
-               $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-               $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);
-              }
-         } else {
-             if ($dataDb) {
-               $formattedData = format_ChatData($date,$nextDate,$dataDb,$room_id,$prevDate);	
-               } else {
-                  $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
-                  $formattedData = _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate);	   
-               }
-            }
+         //get data from db for the selected date
+         $dataDb = hipchat_select_data_id($date);
+        //get time diff between now and the time the data was entered
+        //into the db from webservice
+         $timeDiff = _hipchat_archive_gettimedifference($date);
+         //calculate the hour 
+         $hour  = $timeDiff/3600 ;
+
+         //the data will come from the webservice in these following conditions:
+         //a)the date is today and (either the time difference is greater than 1
+         //or the data is not in the db
+         //b)date is not today and data is not in db
+         //the data will come from the db if the above conditions fail
+         if ((($date === $currDate) && (($dataDb && ($hour >= 1)) || !$dataDb))
+              || (($date !== $currDate) && !$dataDb)){
+                    $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+                    $formattedData = _hipchat_archive_checkWebData($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
+              } else {
+                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id,$prevDate); 
+                 }
        }
     catch(Exception $e){
        drupal_set_message(t('Issue in retrieving the data. Message = %message, query=%query', 
@@ -110,18 +109,20 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
 }
 
 /**
- * _hipchat_archive_getTimeDifference
+ * _hipchat_archive_gettimedifference
  * parameters = $date
  * $date is sent to the db for retrieving time for the 
  * selected date
  * returns time difference between the time the data
  * was entered and now
  */
-function _hipchat_archive_getTimeDifference($date){
+function _hipchat_archive_gettimedifference($date){
+  //get the time when data was entered into the db
   $origTime = hipchat_select_time_fordate($date);
   $convertedTime = strtotime($origTime['ctime']);
-  $timeNow = time();
-  return($timeNow - $convertedTime);
+  
+  //return the difference
+  return(time() - $convertedTime);
 }
 
 /**
@@ -138,22 +139,24 @@ function _hipchat_archive_getTimeDifference($date){
  */
 function _hipchat_archive_checkWebData($dataDb,$date,$nextDate,$room_id,$prevDate,$update=NULL) {
    $chatData = (array)$dataDb[0]['chatdata'];
-              //retrieve the value for key 'messages', if 'error' then return error message else return data
-              if ($dataDb[0]['value'] === 'messages'){
-                 $chatDataValue = drupal_json_decode($chatData['data']);
-                 $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
-                 if ($update){
-                     _hipchat_archive_update_data($date,$saveChatData);
-                 } else {
-                   _hipchat_archive_save_data($saveChatData);
-                   }
-                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id,$prevDate);
-              } else {
-                 drupal_set_message(($dataDb[0]['message']),'error');
-                 $date = $currDate;
-                 $nextDate = '';
-                 $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
-                 }
+   $saveChatData = array();
+   //retrieve the value for key 'messages', if 'error' then return error message else return data
+   if ($dataDb[0]['value'] === 'messages'){
+      $chatDataValue = drupal_json_decode($chatData['data']);
+      $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
+      if ($update){
+          _hipchat_archive_update_data($date,$saveChatData);
+      } else {
+           _hipchat_archive_save_data($saveChatData);
+            }
+      $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id,$prevDate);
+    } else {
+        drupal_set_message(($dataDb[0]['message']),'error');
+        $date = $currDate;
+        $nextDate = '';
+        $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
+        $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
+      }
 
     return $formattedData;
 }
@@ -206,26 +209,25 @@ function _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$for
 
 /**
  * _hipchat_archive_format_data
- * parameter = $date,$nextDate,$data,$room_id
+ * parameter = $date,$nextDate,$data,$room_id,$prevDate
  * formats the data and returns the data in a table format
  * $nextDate are used for creating links
  * $date is used for showing the user that the date on a 
  * page is for that date and hence not a link
+ * $prevDate used to create the prev link
  * $data is the chat history for the date selected
  * $roomid for the creating the url
  */
-function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
+function _hipchat_archive_format_data($date,$nextDate,$data,$room_id,$prevDate){
     //variable declaration
     $rows = array();
     $links = array();
-    $prevDate = date('Y-m-d', strtotime($date .' -1 day')); 
-
-    //create the header for the table
-    $header = array('From','Message','Date');
-
     //get the created links
     $links = _hipchat_archive_build_links($prevDate, $room_id,$nextDate,$date);
 
+      //create the header for the table
+    $header = array('From','Message','Date');
+   
     if ($data){ 
       $getData = $data['cdata'];
       if (is_array($getData)){
@@ -236,12 +238,9 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
       }
     //put data into rows
      if ($result){
-      $rows = _hipchat_archive_get_rows($result,$date,$room_id);
-     }
-     else {
-       drupal_set_message(t('No data available for the selected date.'));
+       $rows = _hipchat_archive_get_rows($result,$date,$room_id);
       }
-     }
+    }
  
   //return formatted output
   return _hipchat_archive_get_build($links,$date,$header,$rows);
@@ -252,7 +251,7 @@ function _hipchat_archive_format_data($date,$nextDate,$data,$room_id){
  * parameter = $prevDate, $room_id,$nextDate,$date
  * creates and returns the links for prev and next day
  */
-function _hipchat_archive_build_links($prevDate, $room_id,$nextDate,$date){
+function _hipchat_archive_build_links($prevDate,$room_id,$nextDate,$date){
     $prevLink = l(t($prevDate), 'hipchat-archive/'.$prevDate.'/'.$room_id);
     $nextLink = l(t($nextDate), 'hipchat-archive/'.$nextDate.'/'.$room_id);
    
