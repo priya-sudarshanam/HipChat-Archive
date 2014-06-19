@@ -29,6 +29,15 @@ function _hipchat_load_includes(){
     module_load_include('css', 'hipchat_archive', 'hipchat_archive');
 }
 
+function _hipchat_archive_setvariables(){
+   return $var[] = array(
+    'link'=> 'https://api.hipchat.com/v1/rooms/history?room_id=',
+    'authToken' => '&auth_token='.variable_get('chat_room_token'),
+    'timeZone' => 'America/New_York',
+    'format' => 'json'
+   );
+}
+
 /**
  * _hipchat_archive_get_data
  * parameter = $date , $room_id
@@ -42,10 +51,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
   _hipchat_load_includes();
   
   //variable declaration
-   $link = 'https://api.hipchat.com/v1/rooms/history?room_id=';
-   $authToken = '&auth_token='.variable_get('chat_room_token');
-   $time_zone = 'America/New_York';
-   $format = 'json';
+   $variables = _hipchat_archive_setvariables();
    $currDate = date('Y-m-d');
    $formattedData ='';
    $prevDate = date('Y-m-d', strtotime($currDate .' -1 day'));
@@ -77,10 +83,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
           $nextDate = date('Y-m-d', strtotime($date .' +1 day'));
              }
  
-    //run cron to save the data from yesterday into the db
-    _hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken);			   
-
-   
+     
      //get history from api.hipchat.com for the parameters
     try {
          //get data from db for the selected date
@@ -98,7 +101,8 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
          //the data will come from the db if the above conditions fail
          if ((($date === $currDate) && (($dataDb && ($hour >= 1)) || !$dataDb))
               || (($date !== $currDate) && !$dataDb)){
-                $dataDb = _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$format,$authToken);
+                $dataDb = _hipchat_archive_getdatawebservice($variables['link'],$room_id,$date,
+                                                             $variables['timeZone'],$variables['format'],$variables['authToken']);
                 $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
               } else {
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id,$prevDate); 
@@ -115,29 +119,25 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
 
 /**
  * _hipchat_archive_cron
- * parameters = $link,$room_id,$prevDate,$time_zone,$format,$authToken
- * $link: to connect to the webservice
- * $room_id: to identify the room
- * $prevDate: retrieve data for yesterday
- * $time_zone: is currently EST
- * $format: set to json 
- * $authToken: the authorization token for the room  and data
  * saves the data for yesterday in the db 
  */
-function _hipchat_archive_cron($link,$room_id,$prevDate,$time_zone,$format,$authToken){
-   //get data for yesterday from webservice
-   $prevDayData = getDataFromWebService($link,$room_id,$prevDate,$time_zone,$format,$authToken);
-   //retrieve the data for 'key' chatdata and convert to an array
+function _hipchat_archive_cron(){
+   //get previous date
+   $prevDate = date('Y-m-d', strtotime('- 1 day'));
+   //get the variables like link, format etc
+   $variables = _hipchat_archive_setvariables();
+   //get room_id
+   $room_id = variable_get('chat_room_id');
+   
+   //get data from webservice
+   $prevDayData = getDataFromWebService($variables['link'],$room_id,$prevDate,$variables['timeZone'],$variables['format'],$variables['authToken']);
    $chatData = (array)$prevDayData[0]['chatdata'];
-   $saveChatData = array();
-   $saved = '';
    if ($prevDayData[0]['value'] === 'messages'){
-         //json decode the data
          $prevDayDataValue = drupal_json_decode($chatData['data']);
-         //save it to the db
          $saveChatData[] = array('cdate' => $prevDate,'cdata' => $prevDayDataValue);
+         //save to the db
          $saved = hipchat_save_data($saveChatData); 
-     }
+      }
  }
  
 /**
@@ -243,6 +243,30 @@ function _hipchat_archive_getdatawebservice($link,$room_id,$date,$time_zone,$for
     return $dataSend; 
 }
 
+/**
+ * hipchat_archive_cron
+ * saves data for the previous day into the db
+ */
+function hipchat_archive_cron(){
+   //yesterday's date, link, authorization token, time_zone and format
+   $prevDate = date('Y-m-d', strtotime('- 1 day'));
+   $link = 'https://api.hipchat.com/v1/rooms/history?room_id=';
+   $authToken = '&auth_token='.variable_get('chat_room_token');
+   $time_zone = 'America/New_York';
+   $format = 'json';
+   //get room_id
+   $room_id = variable_get('chat_room_id');
+   
+   //get data from webservice
+   $prevDayData = getDataFromWebService($link,$room_id,$prevDate,$time_zone,$format,$authToken);
+   $chatData = (array)$prevDayData[0]['chatdata'];
+   if ($prevDayData[0]['value'] === 'messages'){
+         $prevDayDataValue = drupal_json_decode($chatData['data']);
+         $saveChatData[] = array('cdate' => $prevDate,'cdata' => $prevDayDataValue);
+         //save to the db
+         $saved = hipchat_save_data($saveChatData); 
+      }
+  }
 
 /**
  * _hipchat_archive_format_data
