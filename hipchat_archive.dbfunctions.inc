@@ -103,3 +103,42 @@ function _hipchat_archive_update_data($date,$data){
   }
   return $cUpdated; 
 }
+
+/**
+ * _hipchat_archive_update_data
+ * parameter : $date,$data
+ * updates chat data for a particular date
+ * returns true if updated, false otherwise
+ */
+function _hipchat_archive_update_data($date){
+ $table = 'hipchat_archive';
+
+ try {
+       db_result(db_query('SELECT 1 FROM {cdn_webfm_ext} WHERE uid = %d', $user->uid)); 
+  }
+  catch (Exception $e){
+       drupal_set_message(t('Issue in updating the chat data for date= '.$date.'. Message = %message, query=%query', 
+             array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+  }
+  return $cUpdated; 
+}
+
+/**
+ * hipchat_archive_checkifexists
+ * parameter : $date
+ * checks if the given date exists in the db
+ * return true or false
+ */
+function _hipchat_archive_checkifexists($date){
+ $table = 'hipchat_archive';
+ $exists = false;
+
+ try {
+       $exists = db_query('SELECT 1 FROM '.$table.' WHERE cdate = :cdate', array(':cdate' => $date))->fetchField();
+  }
+  catch (Exception $e){
+       drupal_set_message(t('Data not found in the db for the date= '.$date.'. Message = %message, query=%query', 
+             array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
+  }
+  return $exists; 
+}

@@ -103,7 +103,7 @@ function _hipchat_archive_get_data($date = NULL,$url_room_id=Null){
               || (($date !== $currDate) && !$dataDb)){
                 $dataDb = _hipchat_archive_getdatawebservice($variables['link'],$room_id,$date,
                                                              $variables['timeZone'],$variables['format'],$variables['authToken']);
-                $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate,True);
+                $formattedData = _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_id,$prevDate);
               } else {
                  $formattedData = _hipchat_archive_format_data($date,$nextDate,$dataDb,$room_id,$prevDate); 
            }
@@ -134,9 +134,13 @@ function _hipchat_archive_cron(){
    $chatData = (array)$prevDayData[0]['chatdata'];
    if ($prevDayData[0]['value'] === 'messages'){
          $prevDayDataValue = drupal_json_decode($chatData['data']);
-         $saveChatData[] = array('cdate' => $prevDate,'cdata' => $prevDayDataValue);
-         //save to the db
-         $saved = hipchat_save_data($saveChatData); 
+	     $saveChatData[] = array('cdate' => $prevDate,'cdata' => $prevDayDataValue);
+		 //save to the db if does not exist or update the db with the data
+		 if (hipchat_archive_checkifexists($prevDate)){
+		   $saved = hipchat_update_data($prevDate,$saveChatData); 
+	     } else {
+		   $saved = hipchat_save_data($saveChatData);
+ 		 }
       }
  }
  
@@ -178,7 +182,7 @@ function _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_i
    if ($dataDb[0]['value'] === 'messages'){
       $chatDataValue = drupal_json_decode($chatData['data']);
       $saveChatData[] = array('cdate' => $date,'cdata' => $chatDataValue);
-      if ($update){
+      if (hipchat_archive_checkifexists($date)){
           _hipchat_archive_update_data($date,$saveChatData);
       } else {
            _hipchat_archive_save_data($saveChatData);
