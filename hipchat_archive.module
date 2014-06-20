@@ -191,18 +191,16 @@ function _hipchat_archive_checkwebdata($currDate,$dataDb,$date,$nextDate,$room_i
       } else {
            _hipchat_archive_save_data($saveChatData);
             }
-      $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData[0],$room_id,$prevDate);
+      $saveChatData = $saveChatData[0];
     } else {
         drupal_get_messages();
         drupal_set_message('No data available for this day');
         $date = $date;
         $nextDate = $nextDate;
         $prevDate = date('Y-m-d', strtotime($date .' -1 day'));
-  
-    $formattedData = _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
       }
 
-    return $formattedData;
+    return _hipchat_archive_format_data($date,$nextDate,$saveChatData,$room_id,$prevDate);
 }
  
 
