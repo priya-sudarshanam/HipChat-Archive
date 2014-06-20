@@ -1,14 +1,13 @@
 <?php
 /**
 * This file is for database functions like retrieving, 
-* adding data from and to respectively in hipchat table
+* adding data from and to, etc respectively in hipchat table 
 */
 
 /**
  * _hipchat_archive_select_data_fordate
  * parameter : $cdate
  * retrieves chat data for a particular date
- * returns chatdata for the selected date
  */
 function _hipchat_archive_select_data_fordate($cdate){
     $table = 'hipchat_archive';
@@ -30,8 +29,7 @@ function _hipchat_archive_select_data_fordate($cdate){
 /**
  * _hipchat_archive_select_time_fordate
  * parameter : $cdate
- * retrieves chata data for a particular date
- * returns chatdata for the selected date
+ * retrieves time for a particular date
  */
 function _hipchat_archive_select_time_fordate($cdate){
     $table = 'hipchat_archive';
@@ -54,7 +52,7 @@ function _hipchat_archive_select_time_fordate($cdate){
 /**
  * _hipchat_archive_save_data
  * parameter : $chatValues
- * saves chata data for a particular date
+ * saves chat data for a particular date
  * returns true if saved, false otherwise
  */
 function _hipchat_archive_save_data($chatValues){
@@ -96,25 +94,6 @@ function _hipchat_archive_update_data($date,$data){
                         ))
                     ->condition('cdate',$date)
                     ->execute();  
-  }
-  catch (Exception $e){
-       drupal_set_message(t('Issue in updating the chat data for date= '.$date.'. Message = %message, query=%query', 
-             array('%message' =>$e->getMessage(),'%query' => $e->query_string)), 'error');
-  }
-  return $cUpdated; 
-}
-
-/**
- * _hipchat_archive_update_data
- * parameter : $date,$data
- * updates chat data for a particular date
- * returns true if updated, false otherwise
- */
-function _hipchat_archive_update_data($date){
- $table = 'hipchat_archive';
-
- try {
-       db_result(db_query('SELECT 1 FROM {cdn_webfm_ext} WHERE uid = %d', $user->uid)); 
   }
   catch (Exception $e){
        drupal_set_message(t('Issue in updating the chat data for date= '.$date.'. Message = %message, query=%query', 
