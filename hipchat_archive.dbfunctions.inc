@@ -1,8 +1,15 @@
 <?php
-/**
+/*
 * This file is for database functions like retrieving, 
 * adding data from and to, etc respectively in hipchat table 
 */
+
+/*
+* Define Constants required for table and alias
+*/
+define('TABLE', 'hipchat_archive');
+define('ALIAS', 'ha');
+
 
 /**
  * _hipchat_archive_select_data_fordate
@@ -10,11 +17,9 @@
  * retrieves chat data for a particular date
  */
 function _hipchat_archive_select_data_fordate($cdate){
-    $table = 'hipchat_archive';
-    $tableAlias = 'ha';
     try {
-         $cSelected = db_select($table,$tableAlias)
-                   ->fields($tableAlias)
+         $cSelected = db_select(TABLE,ALIAS)
+                   ->fields(ALIAS)
                    ->condition('cdate',$cdate)
                    ->execute()
                    ->fetchAssoc();
@@ -32,10 +37,8 @@ function _hipchat_archive_select_data_fordate($cdate){
  * retrieves time for a particular date
  */
 function _hipchat_archive_select_time_fordate($cdate){
-    $table = 'hipchat_archive';
-    $tableAlias = 'ha';
     try {
-         $cSelected = db_select($table,$tableAlias)
+         $cSelected = db_select(TABLE,ALIAS)
                    ->fields($tableAlias,array('ctime'))
                    ->condition('cdate',$cdate)
                    ->execute()
@@ -56,12 +59,11 @@ function _hipchat_archive_select_time_fordate($cdate){
  * returns true if saved, false otherwise
  */
 function _hipchat_archive_save_data($chatValues){
-  $table = 'hipchat_archive';
   $cDate = $chatValues[0]['cdate'];
   $cTime = date("H:i:s");
   $cdata = drupal_json_encode($chatValues[0]['cdata']['messages']);
   try {
-        $cInserted = db_insert($table)
+        $cInserted = db_insert(TABLE)
                      ->fields(array(
                       'cdate' => $cDate,
                       'ctime' =>  $cTime,
@@ -83,11 +85,10 @@ function _hipchat_archive_save_data($chatValues){
  * returns true if updated, false otherwise
  */
 function _hipchat_archive_update_data($date,$data){
- $table = 'hipchat_archive';
  $cTime = date("H:i:s");
  $cData = drupal_json_encode($data[0]['cdata']['messages']);
  try {
-       $cUpdated = db_update($table)
+       $cUpdated = db_update(TABLE)
                      ->fields(array(
                         'ctime' => $cTime,
                         'cdata' => $cData,
@@ -109,11 +110,10 @@ function _hipchat_archive_update_data($date,$data){
  * return true or false
  */
 function _hipchat_archive_checkifexists($date){
- $table = 'hipchat_archive';
  $exists = false;
 
  try {
-       $exists = db_query('SELECT 1 FROM '.$table.' WHERE cdate = :cdate', array(':cdate' => $date))->fetchField();
+       $exists = db_query('SELECT 1 FROM '.TABLE.' WHERE cdate = :cdate', array(':cdate' => $date))->fetchField();
   }
   catch (Exception $e){
        drupal_set_message(t('Data not found in the db for the date= '.$date.'. Message = %message, query=%query', 
