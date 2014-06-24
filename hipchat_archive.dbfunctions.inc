@@ -7,8 +7,8 @@
 /*
 * Define Constants required for table and alias
 */
-define('TABLE', 'hipchat_archive');
-define('ALIAS', 'ha');
+define('HIPCHAT_ARCHIVE_TABLE', 'hipchat_archive');
+define('HIPCHAT_ARCHIVE_ALIAS', 'ha');
 
 
 /**
@@ -18,7 +18,7 @@ define('ALIAS', 'ha');
  */
 function _hipchat_archive_select_data_fordate($cdate){
     try {
-         $cSelected = db_select(TABLE,ALIAS)
+         $cSelected = db_select(HIPCHAT_ARCHIVE_TABLE,HIPCHAT_ARCHIVE_ALIAS)
                    ->fields(ALIAS)
                    ->condition('cdate',$cdate)
                    ->execute()
@@ -38,7 +38,7 @@ function _hipchat_archive_select_data_fordate($cdate){
  */
 function _hipchat_archive_select_time_fordate($cdate){
     try {
-         $cSelected = db_select(TABLE,ALIAS)
+         $cSelected = db_select(HIPCHAT_ARCHIVE_TABLE,HIPCHAT_ARCHIVE_ALIAS)
                    ->fields($tableAlias,array('ctime'))
                    ->condition('cdate',$cdate)
                    ->execute()
@@ -63,7 +63,7 @@ function _hipchat_archive_save_data($chatValues){
   $cTime = date("H:i:s");
   $cdata = drupal_json_encode($chatValues[0]['cdata']['messages']);
   try {
-        $cInserted = db_insert(TABLE)
+        $cInserted = db_insert(HIPCHAT_ARCHIVE_TABLE)
                      ->fields(array(
                       'cdate' => $cDate,
                       'ctime' =>  $cTime,
@@ -88,7 +88,7 @@ function _hipchat_archive_update_data($date,$data){
  $cTime = date("H:i:s");
  $cData = drupal_json_encode($data[0]['cdata']['messages']);
  try {
-       $cUpdated = db_update(TABLE)
+       $cUpdated = db_update(HIPCHAT_ARCHIVE_TABLE)
                      ->fields(array(
                         'ctime' => $cTime,
                         'cdata' => $cData,
@@ -113,7 +113,7 @@ function _hipchat_archive_checkifexists($date){
  $exists = false;
 
  try {
-       $exists = db_query('SELECT 1 FROM '.TABLE.' WHERE cdate = :cdate', array(':cdate' => $date))->fetchField();
+       $exists = db_query('SELECT 1 FROM '.HIPCHAT_ARCHIVE_TABLE.' WHERE cdate = :cdate', array(':cdate' => $date))->fetchField();
   }
   catch (Exception $e){
        drupal_set_message(t('Data not found in the db for the date= '.$date.'. Message = %message, query=%query', 
